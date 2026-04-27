@@ -29,6 +29,9 @@ class WebViewViewModel @Inject constructor(
     private val _showSettings = MutableStateFlow(false)
     val showSettings: StateFlow<Boolean> = _showSettings.asStateFlow()
 
+    private val _showAbout = MutableStateFlow(false)
+    val showAbout: StateFlow<Boolean> = _showAbout.asStateFlow()
+
     fun onPageStarted() {
         _connectionState.update { ConnectionState.Loading }
     }
@@ -47,6 +50,14 @@ class WebViewViewModel @Inject constructor(
 
     fun dismissSettings() {
         _showSettings.update { false }
+    }
+
+    fun showAbout() {
+        _showAbout.update { true }
+    }
+
+    fun dismissAbout() {
+        _showAbout.update { false }
     }
 
     fun saveServerUrl(url: String) {

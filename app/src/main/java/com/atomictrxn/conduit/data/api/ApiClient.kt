@@ -1,5 +1,6 @@
 package com.atomictrxn.conduit.data.api
 
+import com.atomictrxn.conduit.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -8,9 +9,6 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
     fun create(baseUrl: String, apiKey: String): OpenWebUIService {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
@@ -18,7 +16,13 @@ object ApiClient {
                     .build()
                 chain.proceed(request)
             }
-            .addInterceptor(logging)
+            .apply {
+                if (BuildConfig.DEBUG) {
+                    addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BASIC
+                    })
+                }
+            }
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()

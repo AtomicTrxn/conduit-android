@@ -34,7 +34,8 @@ class NotificationWorker @AssistedInject constructor(
         return try {
             val service = ApiClient.create(config.serverUrl, config.apiKey)
             val chats = service.getChats()
-            val lastChecked = inputData.getLong(KEY_LAST_CHECKED, 0L)
+            val lastChecked = repository.lastNotificationCheck.first()
+            val now = System.currentTimeMillis() / 1000L  // API returns Unix seconds
             val newChats = chats.filter { it.updatedAt > lastChecked }
 
             newChats.forEach { chat ->
@@ -47,6 +48,9 @@ class NotificationWorker @AssistedInject constructor(
 
                 showNotification(chat.id, chat.title, lastAssistantMessage)
             }
+
+            // Persist the check time so the next run doesn't re-notify the same chats
+            repository.setLastNotificationCheck(now)
             Result.success()
         } catch (e: Exception) {
             Result.retry()
@@ -82,7 +86,4 @@ class NotificationWorker @AssistedInject constructor(
         }
     }
 
-    companion object {
-        const val KEY_LAST_CHECKED = "last_checked"
-    }
 }
