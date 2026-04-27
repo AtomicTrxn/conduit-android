@@ -65,4 +65,4 @@ To auto-format:
 ## Acknowledgements
 
 - [Open WebUI](https://github.com/open-webui/open-webui) — the self-hosted AI chat platform this app connects to
-- [Conduit for Open WebUI](https://github.com/tnware/conduit-for-open-webui) — the original project this Android client is based on
+- [Conduit for Open WebUI](https://github.com/tnware/conduit-for-open-webui) — the original project this Android client was inspired by
