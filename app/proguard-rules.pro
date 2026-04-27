@@ -1,4 +1,5 @@
 -keep class com.atomictrxn.conduit.data.api.models.** { *; }
+-keep class com.atomictrxn.conduit.ui.webview.WebViewActivity$TokenBridge { *; }
 
 # Tink (backing androidx.security:security-crypto) references errorprone annotations
 # that are compile-only and not present at runtime.

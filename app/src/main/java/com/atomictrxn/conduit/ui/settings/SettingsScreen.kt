@@ -42,6 +42,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
+    onSyncApiKey: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
@@ -106,12 +107,14 @@ fun SettingsScreen(
                         .padding(horizontal = 16.dp),
             )
 
-            if (uiState.apiKey.isNotBlank()) {
-                TextButton(
-                    onClick = viewModel::clearApiKey,
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                ) {
-                    Text(stringResource(R.string.clear_api_key), color = MaterialTheme.colorScheme.error)
+            Row(modifier = Modifier.padding(horizontal = 12.dp)) {
+                TextButton(onClick = onSyncApiKey) {
+                    Text(stringResource(R.string.sync_api_key))
+                }
+                if (uiState.apiKey.isNotBlank()) {
+                    TextButton(onClick = viewModel::clearApiKey) {
+                        Text(stringResource(R.string.clear_api_key), color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
 

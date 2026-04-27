@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -20,6 +21,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.annotation.Keep
+import com.atomictrxn.conduit.data.api.ApiClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
@@ -164,6 +169,7 @@ class WebViewActivity : ComponentActivity() {
                                 viewModel.dismissSettings()
                                 wv.reload()
                             },
+                            onSyncApiKey = { injectTokenBridge(wv) },
                         )
                     }
                 }
@@ -282,6 +288,12 @@ class WebViewActivity : ComponentActivity() {
                     Log.d("Conduit", "onPageFinished: $url")
                     CookieManager.getInstance().flush()
                     viewModel.onPageFinished()
+                    if (currentServerUrl.isNotBlank() &&
+                        url.startsWith(currentServerUrl) &&
+                        !viewModel.serverConfig.value.hasApiKey
+                    ) {
+                        injectTokenBridge(view)
+                    }
                 }
 
                 override fun onReceivedError(
@@ -314,6 +326,7 @@ class WebViewActivity : ComponentActivity() {
                     return true
                 }
             }
+        wv.addJavascriptInterface(TokenBridge(), "ConduitBridge")
         wv.webChromeClient = buildChromeClient()
         return wv
     }
@@ -402,6 +415,34 @@ class WebViewActivity : ComponentActivity() {
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
                 notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    fun injectTokenBridge(wv: WebView) {
+        wv.evaluateJavascript(
+            "(function(){ var t = localStorage.getItem('token'); if(t) ConduitBridge.onToken(t); })()",
+            null,
+        )
+    }
+
+    @Keep
+    inner class TokenBridge {
+        @JavascriptInterface
+        fun onToken(jwt: String) {
+            if (jwt.isBlank()) return
+            val serverUrl = currentServerUrl
+            if (serverUrl.isBlank()) return
+            lifecycleScope.launch(Dispatchers.IO) {
+                runCatching {
+                    val apiKey = ApiClient.create(serverUrl, jwt).getApiKey().apiKey
+                    if (apiKey.isNotBlank()) {
+                        viewModel.saveApiKey(apiKey)
+                        Log.d("Conduit", "API key synced from session")
+                    }
+                }.onFailure {
+                    Log.w("Conduit", "Failed to sync API key: ${it.message}")
+                }
             }
         }
     }
