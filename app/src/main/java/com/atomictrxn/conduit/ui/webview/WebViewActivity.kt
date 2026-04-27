@@ -60,6 +60,7 @@ class WebViewActivity : ComponentActivity() {
     private var webView: WebView? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
+    private var cameraImageFile: File? = null
     private var pendingPermissionRequest: PermissionRequest? = null
 
     // Written from a coroutine, read synchronously in shouldOverrideUrlLoading.
@@ -80,6 +81,7 @@ class WebViewActivity : ComponentActivity() {
             androidx.activity.result.contract.ActivityResultContracts.TakePicture(),
         ) { success ->
             val uri = if (success) cameraImageUri else null
+            if (!success) cameraImageFile?.delete()
             filePathCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
             filePathCallback = null
         }
@@ -268,7 +270,7 @@ class WebViewActivity : ComponentActivity() {
         }
         CookieManager.getInstance().let { cm ->
             cm.setAcceptCookie(true)
-            cm.setAcceptThirdPartyCookies(wv, true)
+            cm.setAcceptThirdPartyCookies(wv, false)
         }
         wv.webViewClient =
             object : WebViewClient() {
@@ -342,7 +344,9 @@ class WebViewActivity : ComponentActivity() {
                 filePathCallback?.onReceiveValue(null)
                 filePathCallback = callback
 
+                cameraImageFile?.delete()
                 val cameraFile = File.createTempFile("img_", ".jpg", externalCacheDir)
+                cameraImageFile = cameraFile
                 cameraImageUri =
                     FileProvider.getUriForFile(
                         this@WebViewActivity,

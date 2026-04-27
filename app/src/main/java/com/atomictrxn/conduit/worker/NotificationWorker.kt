@@ -66,10 +66,11 @@ class NotificationWorker
                     putExtra(WebViewActivity.EXTRA_CHAT_ID, chatId)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
+            val notificationId = (chatId.toLongOrNull() ?: chatId.fold(0L) { acc, c -> acc * 31 + c.code }).toInt()
             val pendingIntent =
                 PendingIntent.getActivity(
                     context,
-                    chatId.hashCode(),
+                    notificationId,
                     intent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
@@ -87,7 +88,7 @@ class NotificationWorker
 
             if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
                 NotificationManagerCompat.from(context)
-                    .notify(chatId.hashCode(), notification)
+                    .notify(notificationId, notification)
             }
         }
     }

@@ -102,13 +102,19 @@ class SettingsDataStore
 
         suspend fun saveServerConfig(config: ServerConfig) {
             context.dataStore.edit { prefs ->
+                val urlChanged = prefs[Keys.SERVER_URL] != config.serverUrl
                 prefs[Keys.SERVER_URL] = config.serverUrl
+                if (urlChanged) prefs[Keys.LAST_NOTIFICATION_CHECK] = 0L
             }
             saveApiKey(config.apiKey)
         }
 
         suspend fun saveServerUrl(url: String) {
-            context.dataStore.edit { it[Keys.SERVER_URL] = url }
+            context.dataStore.edit { prefs ->
+                val urlChanged = prefs[Keys.SERVER_URL] != url
+                prefs[Keys.SERVER_URL] = url
+                if (urlChanged) prefs[Keys.LAST_NOTIFICATION_CHECK] = 0L
+            }
         }
 
         suspend fun saveApiKey(apiKey: String) {
