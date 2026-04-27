@@ -10,5 +10,7 @@ interface OpenWebUIService {
     suspend fun getChats(): List<ChatListItem>
 
     @GET("api/chats/{id}")
-    suspend fun getChat(@Path("id") id: String): Chat
+    suspend fun getChat(
+        @Path("id") id: String,
+    ): Chat
 }

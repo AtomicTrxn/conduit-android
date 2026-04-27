@@ -49,39 +49,40 @@ fun AboutScreen(onDismiss: () -> Unit) {
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.about_back)
+                            contentDescription = stringResource(R.string.about_back),
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Image(
                 painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                modifier = Modifier.size(96.dp)
+                modifier = Modifier.size(96.dp),
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium,
             )
 
             Text(
                 text = stringResource(R.string.about_version_label, BuildConfig.VERSION_NAME),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -90,7 +91,7 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 text = stringResource(R.string.about_description),
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp)
+                modifier = Modifier.padding(horizontal = 32.dp),
             )
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -101,9 +102,10 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 text = stringResource(R.string.about_built_with),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -114,7 +116,7 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 url = stringResource(R.string.about_openwebui_url),
                 onOpenUrl = { url ->
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                }
+                },
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -138,7 +140,7 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 url = stringResource(R.string.about_conduit_url),
                 onOpenUrl = { url ->
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                }
+                },
             )
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -151,31 +153,32 @@ private fun AttributionRow(
     name: String,
     description: String,
     url: String,
-    onOpenUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         IconButton(onClick = { onOpenUrl(url) }) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                 contentDescription = stringResource(R.string.about_open_link, name),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
             )
         }
     }

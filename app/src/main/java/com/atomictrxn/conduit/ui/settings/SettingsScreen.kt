@@ -40,7 +40,7 @@ import com.atomictrxn.conduit.R
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
@@ -61,19 +61,20 @@ fun SettingsScreen(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.navigate_back),
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .imePadding()
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
         ) {
             SettingsSectionHeader(stringResource(R.string.settings_server_group))
 
@@ -85,9 +86,10 @@ fun SettingsScreen(
                 supportingText = uiState.urlError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -101,15 +103,16 @@ fun SettingsScreen(
                 label = { Text(stringResource(R.string.settings_apikey_label)) },
                 placeholder = { Text(stringResource(R.string.settings_apikey_placeholder)) },
                 singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
             )
 
             if (uiState.apiKey.isNotBlank()) {
                 TextButton(
                     onClick = viewModel::clearApiKey,
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp),
                 ) {
                     Text(stringResource(R.string.clear_api_key), color = MaterialTheme.colorScheme.error)
                 }
@@ -121,28 +124,29 @@ fun SettingsScreen(
             SettingsSectionHeader(stringResource(R.string.settings_notifications_group))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.settings_notifications_label),
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                     if (!serverConfig.hasApiKey) {
                         Text(
                             text = stringResource(R.string.settings_notifications_disabled_hint),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
                 Switch(
                     checked = uiState.notificationsEnabled && serverConfig.hasApiKey,
                     onCheckedChange = { viewModel.setNotificationsEnabled(it) },
-                    enabled = serverConfig.hasApiKey
+                    enabled = serverConfig.hasApiKey,
                 )
             }
 
@@ -150,10 +154,11 @@ fun SettingsScreen(
 
             Button(
                 onClick = { viewModel.saveSettings() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(48.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(48.dp),
             ) {
                 Text(stringResource(R.string.save))
             }
@@ -169,6 +174,6 @@ private fun SettingsSectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
     )
 }
