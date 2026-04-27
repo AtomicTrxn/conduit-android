@@ -127,9 +127,10 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 text = stringResource(R.string.about_inspired_by),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
