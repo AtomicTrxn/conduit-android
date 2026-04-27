@@ -193,6 +193,7 @@ class WebViewActivity : ComponentActivity() {
         // Show/hide the settings overlay in response to ViewModel state.
         lifecycleScope.launch {
             viewModel.showSettings.collect { show ->
+                if (show) settingsViewModel.loadCurrentConfig()
                 settingsView.visibility = if (show) View.VISIBLE else View.GONE
             }
         }

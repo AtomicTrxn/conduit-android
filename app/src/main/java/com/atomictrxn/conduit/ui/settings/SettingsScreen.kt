@@ -46,10 +46,6 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.loadCurrentConfig()
-    }
-
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onSave()
     }
