@@ -91,7 +91,9 @@ These are all covered by `.gitignore`. Do not add them to version control.
 2. Commit to a feature branch, open a PR, squash merge to `main`
 3. Build the release APK: `./gradlew assembleRelease`
 4. Create a GitHub release targeting `main`: `gh release create vX.Y.Z --title "Conduit vX.Y.Z" --notes "..." --target main`
-5. Attach the APK: `gh release upload vX.Y.Z app/build/outputs/apk/release/app-release.apk`
+5. Attach the APK: `gh release upload vX.Y.Z app/build/outputs/apk/release/conduit-X.Y.Z.apk`
+
+The release APK is automatically named `conduit-{versionName}.apk` (e.g. `conduit-1.0.5.apk`) by the `applicationVariants` output filename config in `app/build.gradle.kts`.
 
 ## String resources
 
