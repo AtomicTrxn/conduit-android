@@ -38,11 +38,12 @@
     <string name="about_back">Back</string>
     <string name="about_description">A native Android client for your self-hosted Open WebUI instance. Access your AI models and chat history with a fast, persistent connection — no browser tab required.</string>
     <string name="about_built_with">Built on open source</string>
+    <string name="about_inspired_by">Inspired by the community</string>
     <string name="about_openwebui_name">Open WebUI</string>
     <string name="about_openwebui_description">The self-hosted AI chat platform this app connects to</string>
     <string name="about_openwebui_url">https://github.com/open-webui/open-webui</string>
     <string name="about_conduit_name">Conduit for Open WebUI</string>
-    <string name="about_conduit_description">The original project this Android client is based on</string>
+    <string name="about_conduit_description">The original project that inspired this work</string>
     <string name="about_conduit_url">https://github.com/tnware/conduit-for-open-webui</string>
     <string name="about_open_link">Open %1$s on the web</string>
     <string name="url_invalid">URL must start with http:// or https://</string>
