@@ -43,9 +43,9 @@
     <string name="about_openwebui_name">Open WebUI</string>
     <string name="about_openwebui_description">The self-hosted AI chat platform this app connects to</string>
     <string name="about_openwebui_url">https://github.com/open-webui/open-webui</string>
-    <string name="about_conduit_name">Conduit for Open WebUI</string>
+    <string name="about_conduit_name">Open WebUI Client for Android</string>
     <string name="about_conduit_description">The original project that inspired this work</string>
-    <string name="about_conduit_url">https://github.com/tnware/conduit-for-open-webui</string>
+    <string name="about_conduit_url">https://github.com/Maticcm/Open-WebUI-Client-for-Android</string>
     <string name="about_this_app_url">https://github.com/AtomicTrxn/conduit-android</string>
     <string name="about_view_source">View source on GitHub</string>
     <string name="about_open_link">Open %1$s on the web</string>
