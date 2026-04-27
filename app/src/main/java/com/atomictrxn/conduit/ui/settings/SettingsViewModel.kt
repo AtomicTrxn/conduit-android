@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -46,13 +47,14 @@ class SettingsViewModel @Inject constructor(
 
     fun loadCurrentConfig() {
         viewModelScope.launch {
-            val config = serverConfig.value
-            _uiState.update {
-                it.copy(
-                    serverUrl = config.serverUrl,
-                    apiKey = config.apiKey,
-                    notificationsEnabled = notificationsEnabled.value
-                )
+            repository.serverConfig.first().let { config ->
+                _uiState.update {
+                    it.copy(
+                        serverUrl = config.serverUrl,
+                        apiKey = config.apiKey,
+                        notificationsEnabled = repository.notificationsEnabled.first()
+                    )
+                }
             }
         }
     }
