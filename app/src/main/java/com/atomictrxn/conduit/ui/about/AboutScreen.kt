@@ -24,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import com.atomictrxn.conduit.R
 @Composable
 fun AboutScreen(onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val thisAppUrl = stringResource(R.string.about_this_app_url)
 
     Scaffold(
         topBar = {
@@ -85,7 +87,24 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            TextButton(
+                onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(thisAppUrl)))
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = stringResource(R.string.about_view_source),
+                    modifier = Modifier.padding(start = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = stringResource(R.string.about_description),
@@ -139,15 +158,6 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 name = stringResource(R.string.about_conduit_name),
                 description = stringResource(R.string.about_conduit_description),
                 url = stringResource(R.string.about_conduit_url),
-                onOpenUrl = { url ->
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                },
-            )
-
-            AttributionRow(
-                name = stringResource(R.string.about_this_app_name),
-                description = stringResource(R.string.about_this_app_description),
-                url = stringResource(R.string.about_this_app_url),
                 onOpenUrl = { url ->
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 },

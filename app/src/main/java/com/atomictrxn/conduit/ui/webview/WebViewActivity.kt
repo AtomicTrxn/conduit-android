@@ -25,6 +25,7 @@ import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -122,9 +123,11 @@ class WebViewActivity : ComponentActivity() {
             ComposeView(this).apply {
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
                 setContent {
+                    val connectionState by viewModel.connectionState.collectAsState()
                     ConduitTheme {
                         WebViewToolbar(
                             visible = true,
+                            connectionState = connectionState,
                             onSettingsClick = viewModel::showSettings,
                             onAboutClick = viewModel::showAbout,
                         )

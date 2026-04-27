@@ -46,9 +46,8 @@
     <string name="about_conduit_name">Conduit for Open WebUI</string>
     <string name="about_conduit_description">The original project that inspired this work</string>
     <string name="about_conduit_url">https://github.com/tnware/conduit-for-open-webui</string>
-    <string name="about_this_app_name">Conduit for Android</string>
-    <string name="about_this_app_description">This app — view source on GitHub</string>
     <string name="about_this_app_url">https://github.com/AtomicTrxn/conduit-android</string>
+    <string name="about_view_source">View source on GitHub</string>
     <string name="about_open_link">Open %1$s on the web</string>
     <string name="url_invalid">URL must start with http:// or https://</string>
     <string name="url_required">Please enter a server URL</string>
