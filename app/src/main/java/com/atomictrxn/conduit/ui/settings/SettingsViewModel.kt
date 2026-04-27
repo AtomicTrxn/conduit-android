@@ -21,6 +21,7 @@ data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
     val urlError: String? = null,
     val isSaved: Boolean = false,
+    val urlChanged: Boolean = false,
 )
 
 @HiltViewModel
@@ -69,6 +70,7 @@ class SettingsViewModel
                 _uiState.update { it.copy(urlError = "URL must start with http:// or https://") }
                 return false
             }
+            val urlChanged = url != serverConfig.value.serverUrl
             viewModelScope.launch {
                 repository.saveServerConfig(
                     ServerConfig(
@@ -77,7 +79,7 @@ class SettingsViewModel
                     ),
                 )
                 repository.setNotificationsEnabled(_uiState.value.notificationsEnabled)
-                _uiState.update { it.copy(isSaved = true) }
+                _uiState.update { it.copy(isSaved = true, urlChanged = urlChanged) }
             }
             return true
         }

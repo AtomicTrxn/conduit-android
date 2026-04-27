@@ -168,8 +168,9 @@ class WebViewActivity : ComponentActivity() {
                             viewModel = settingsViewModel,
                             onDismiss = { viewModel.dismissSettings() },
                             onSave = {
+                                val urlChanged = settingsViewModel.uiState.value.urlChanged
                                 viewModel.dismissSettings()
-                                wv.reload()
+                                if (urlChanged) wv.loadUrl(currentServerUrl)
                             },
                             onSyncApiKey = { injectTokenBridge(wv) },
                         )
