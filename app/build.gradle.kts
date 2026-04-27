@@ -97,6 +97,7 @@ dependencies {
     ksp(libs.hilt.work.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.work.runtime.ktx)
 
     implementation(libs.retrofit)

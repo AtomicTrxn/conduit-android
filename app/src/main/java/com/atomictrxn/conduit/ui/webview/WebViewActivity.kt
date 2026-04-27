@@ -57,7 +57,8 @@ class WebViewActivity : ComponentActivity() {
     private var cameraImageUri: Uri? = null
     private var pendingPermissionRequest: PermissionRequest? = null
 
-    // Current server URL — read synchronously in shouldOverrideUrlLoading
+    // Written from a coroutine, read synchronously in shouldOverrideUrlLoading.
+    @Volatile
     private var currentServerUrl: String = ""
 
     private val fileChooserLauncher =
@@ -212,7 +213,7 @@ class WebViewActivity : ComponentActivity() {
                     if (!loaded.startsWith(newUrl)) {
                         val chatId = intent.getStringExtra(EXTRA_CHAT_ID)
                         if (chatId != null) {
-                            wv.loadUrl("$newUrl/c/$chatId")
+                            wv.loadUrl("$newUrl/c/${Uri.encode(chatId.take(128))}")
                         } else {
                             wv.loadUrl(newUrl)
                         }
@@ -228,7 +229,7 @@ class WebViewActivity : ComponentActivity() {
         setIntent(intent)
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: return
         if (currentServerUrl.isNotBlank()) {
-            webView?.loadUrl("$currentServerUrl/c/$chatId")
+            webView?.loadUrl("$currentServerUrl/c/${Uri.encode(chatId.take(128))}")
         }
     }
 
@@ -240,9 +241,9 @@ class WebViewActivity : ComponentActivity() {
             domStorageEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
             mediaPlaybackRequiresUserGesture = false
-            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            allowContentAccess = true
-            allowFileAccess = true
+            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            allowContentAccess = false
+            allowFileAccess = false
             loadWithOverviewMode = true
             useWideViewPort = true
             userAgentString = "Conduit/1.0 (Android) ${wv.settings.userAgentString}"
@@ -287,14 +288,18 @@ class WebViewActivity : ComponentActivity() {
                     request: WebResourceRequest,
                 ): Boolean {
                     val url = request.url.toString()
-                    val keep = currentServerUrl.isNotBlank() && url.startsWith(currentServerUrl)
-                    Log.d("Conduit", "shouldOverride: $url | serverUrl=$currentServerUrl | keep=$keep")
-                    return if (keep) {
-                        false
-                    } else {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        true
+                    val scheme = request.url.scheme?.lowercase()
+                    if (currentServerUrl.isNotBlank() && url.startsWith(currentServerUrl)) {
+                        Log.d("Conduit", "shouldOverride: keeping in WebView: $url")
+                        return false
                     }
+                    if (scheme == "http" || scheme == "https") {
+                        Log.d("Conduit", "shouldOverride: opening externally: $url")
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    } else {
+                        Log.w("Conduit", "shouldOverride: blocked non-http(s) URL scheme '$scheme': $url")
+                    }
+                    return true
                 }
             }
         wv.webChromeClient = buildChromeClient()
