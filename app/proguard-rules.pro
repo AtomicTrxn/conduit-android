@@ -1,0 +1,1 @@
+-keep class com.atomictrxn.conduit.data.api.models.** { *; }
