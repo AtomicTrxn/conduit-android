@@ -288,9 +288,11 @@ class WebViewActivity : ComponentActivity() {
                     Log.d("Conduit", "onPageFinished: $url")
                     CookieManager.getInstance().flush()
                     viewModel.onPageFinished()
+                    val storedKey = viewModel.serverConfig.value.apiKey
+                    val isJwt = storedKey.count { it == '.' } == 2
                     if (currentServerUrl.isNotBlank() &&
                         url.startsWith(currentServerUrl) &&
-                        !viewModel.serverConfig.value.hasApiKey
+                        (storedKey.isBlank() || isJwt)
                     ) {
                         injectTokenBridge(view)
                     }
@@ -434,14 +436,18 @@ class WebViewActivity : ComponentActivity() {
             val serverUrl = currentServerUrl
             if (serverUrl.isBlank()) return
             lifecycleScope.launch(Dispatchers.IO) {
-                runCatching {
-                    val apiKey = ApiClient.create(serverUrl, jwt).getApiKey().apiKey
-                    if (apiKey.isNotBlank()) {
-                        viewModel.saveApiKey(apiKey)
-                        Log.d("Conduit", "API key synced from session")
-                    }
-                }.onFailure {
-                    Log.w("Conduit", "Failed to sync API key: ${it.message}")
+                val permanentKey = runCatching {
+                    ApiClient.create(serverUrl, jwt).getApiKey().apiKey.takeIf { it.isNotBlank() }
+                }.getOrNull()
+
+                if (permanentKey != null) {
+                    viewModel.saveApiKey(permanentKey)
+                    Log.d("Conduit", "API key synced from session")
+                } else {
+                    // API key endpoint unavailable — store JWT directly.
+                    // It works as a Bearer token and auto-refreshes on each page load.
+                    viewModel.saveApiKey(jwt)
+                    Log.d("Conduit", "Session token saved (API key endpoint unavailable)")
                 }
             }
         }
