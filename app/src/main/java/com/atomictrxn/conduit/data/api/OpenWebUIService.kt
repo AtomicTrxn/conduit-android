@@ -6,7 +6,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface OpenWebUIService {
-    @GET("api/chats")
+    @GET("api/v1/chats/")
     suspend fun getChats(): List<ChatListItem>
 
     @POST("api/v1/auths/api_key")

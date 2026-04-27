@@ -398,14 +398,18 @@ class WebViewActivity : ComponentActivity() {
         }
 
     private fun scheduleNotificationWorker() {
-        val workRequest =
+        val wm = WorkManager.getInstance(this)
+        val periodicRequest =
             PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES)
                 .build()
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+        wm.enqueueUniquePeriodicWork(
             "conduit_notification_poll",
             ExistingPeriodicWorkPolicy.KEEP,
-            workRequest,
+            periodicRequest,
         )
+        if (BuildConfig.DEBUG) {
+            wm.enqueue(androidx.work.OneTimeWorkRequestBuilder<NotificationWorker>().build())
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
