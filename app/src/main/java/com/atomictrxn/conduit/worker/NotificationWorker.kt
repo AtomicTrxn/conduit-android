@@ -44,19 +44,10 @@ class NotificationWorker
 
                 val service = ApiClient.create(config.serverUrl, config.apiKey)
                 val chats = service.getChats()
-                // Cap individual fetches to avoid flooding the server.
                 val newChats = chats.filter { it.updatedAt > lastChecked }.take(10)
 
                 newChats.forEach { chat ->
-                    val fullChat = runCatching { service.getChat(chat.id) }.getOrNull()
-                    val lastAssistantMessage =
-                        fullChat?.messages
-                            ?.lastOrNull { it.role == "assistant" }
-                            ?.content
-                            ?.take(80)
-                            ?: return@forEach
-
-                    showNotification(chat.id, chat.title, lastAssistantMessage)
+                    showNotification(chat.id, chat.title)
                 }
 
                 repository.setLastNotificationCheck(now)
@@ -69,7 +60,6 @@ class NotificationWorker
         private fun showNotification(
             chatId: String,
             title: String,
-            preview: String,
         ) {
             val intent =
                 Intent(context, WebViewActivity::class.java).apply {
@@ -88,8 +78,7 @@ class NotificationWorker
                 NotificationCompat.Builder(context, App.NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(context.getString(R.string.notification_title))
-                    .setContentText(preview)
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(preview))
+                    .setContentText(title)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
