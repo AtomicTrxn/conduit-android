@@ -119,6 +119,19 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 },
             )
 
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = stringResource(R.string.about_inspired_by),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
 
             AttributionRow(
