@@ -144,6 +144,15 @@ fun AboutScreen(onDismiss: () -> Unit) {
                 },
             )
 
+            AttributionRow(
+                name = stringResource(R.string.about_this_app_name),
+                description = stringResource(R.string.about_this_app_description),
+                url = stringResource(R.string.about_this_app_url),
+                onOpenUrl = { url ->
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                },
+            )
+
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
