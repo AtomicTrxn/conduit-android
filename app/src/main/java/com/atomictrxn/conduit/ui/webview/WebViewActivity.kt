@@ -289,10 +289,9 @@ class WebViewActivity : ComponentActivity() {
                     CookieManager.getInstance().flush()
                     viewModel.onPageFinished()
                     val storedKey = viewModel.serverConfig.value.apiKey
-                    val isJwt = storedKey.count { it == '.' } == 2
                     if (currentServerUrl.isNotBlank() &&
                         url.startsWith(currentServerUrl) &&
-                        (storedKey.isBlank() || isJwt)
+                        jwtNeedsRefresh(storedKey)
                     ) {
                         injectTokenBridge(view)
                     }
@@ -418,6 +417,24 @@ class WebViewActivity : ComponentActivity() {
             ) {
                 notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+    }
+
+    private fun jwtNeedsRefresh(storedKey: String): Boolean {
+        if (storedKey.isBlank()) return true
+        val parts = storedKey.split(".")
+        if (parts.size != 3) return false  // not a JWT — permanent API key, never refresh
+        return try {
+            val payload = android.util.Base64.decode(
+                parts[1].padEnd((parts[1].length + 3) / 4 * 4, '='),
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP,
+            )
+            val json = org.json.JSONObject(String(payload))
+            val exp = json.optLong("exp", 0L)
+            val refreshThreshold = System.currentTimeMillis() / 1000L + 24 * 60 * 60
+            exp < refreshThreshold
+        } catch (e: Exception) {
+            true  // can't decode — refresh to be safe
         }
     }
 
