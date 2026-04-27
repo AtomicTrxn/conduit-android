@@ -449,6 +449,7 @@ class WebViewActivity : ComponentActivity() {
                     viewModel.saveApiKey(jwt)
                     Log.d("Conduit", "Session token saved (API key endpoint unavailable)")
                 }
+                settingsViewModel.loadCurrentConfig()
             }
         }
     }
