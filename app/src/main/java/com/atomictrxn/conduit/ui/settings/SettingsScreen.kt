@@ -110,7 +110,14 @@ fun SettingsScreen(
             if (uiState.apiKey.isNotBlank()) {
                 val isJwt = uiState.apiKey.count { it == '.' } == 2
                 Text(
-                    text = if (isJwt) stringResource(R.string.api_key_status_session) else stringResource(R.string.api_key_status_persistent),
+                    text =
+                        if (isJwt) {
+                            stringResource(
+                                R.string.api_key_status_session,
+                            )
+                        } else {
+                            stringResource(R.string.api_key_status_persistent)
+                        },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isJwt) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 16.dp),

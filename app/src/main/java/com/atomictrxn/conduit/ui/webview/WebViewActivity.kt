@@ -21,15 +21,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.annotation.Keep
-import com.atomictrxn.conduit.data.api.ApiClient
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
+import androidx.annotation.Keep
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
@@ -42,12 +39,14 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.atomictrxn.conduit.BuildConfig
 import com.atomictrxn.conduit.R
+import com.atomictrxn.conduit.data.api.ApiClient
 import com.atomictrxn.conduit.ui.about.AboutScreen
 import com.atomictrxn.conduit.ui.settings.SettingsScreen
 import com.atomictrxn.conduit.ui.settings.SettingsViewModel
 import com.atomictrxn.conduit.ui.theme.ConduitTheme
 import com.atomictrxn.conduit.worker.NotificationWorker
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -432,18 +431,19 @@ class WebViewActivity : ComponentActivity() {
     private fun jwtNeedsRefresh(storedKey: String): Boolean {
         if (storedKey.isBlank()) return true
         val parts = storedKey.split(".")
-        if (parts.size != 3) return false  // not a JWT — permanent API key, never refresh
+        if (parts.size != 3) return false // not a JWT — permanent API key, never refresh
         return try {
-            val payload = android.util.Base64.decode(
-                parts[1].padEnd((parts[1].length + 3) / 4 * 4, '='),
-                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP,
-            )
+            val payload =
+                android.util.Base64.decode(
+                    parts[1].padEnd((parts[1].length + 3) / 4 * 4, '='),
+                    android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP,
+                )
             val json = org.json.JSONObject(String(payload))
             val exp = json.optLong("exp", 0L)
             val refreshThreshold = System.currentTimeMillis() / 1000L + 24 * 60 * 60
             exp < refreshThreshold
         } catch (e: Exception) {
-            true  // can't decode — refresh to be safe
+            true // can't decode — refresh to be safe
         }
     }
 
@@ -462,9 +462,10 @@ class WebViewActivity : ComponentActivity() {
             val serverUrl = currentServerUrl
             if (serverUrl.isBlank()) return
             lifecycleScope.launch(Dispatchers.IO) {
-                val permanentKey = runCatching {
-                    ApiClient.create(serverUrl, jwt).getApiKey().apiKey.takeIf { it.isNotBlank() }
-                }.getOrNull()
+                val permanentKey =
+                    runCatching {
+                        ApiClient.create(serverUrl, jwt).getApiKey().apiKey.takeIf { it.isNotBlank() }
+                    }.getOrNull()
 
                 if (permanentKey != null) {
                     viewModel.saveApiKey(permanentKey)
