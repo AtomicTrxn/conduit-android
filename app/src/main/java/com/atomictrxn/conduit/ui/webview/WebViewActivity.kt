@@ -109,11 +109,14 @@ class WebViewActivity : ComponentActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (webView?.canGoBack() == true) {
-                        webView?.goBack()
-                    } else {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
+                    when {
+                        viewModel.showAbout.value -> viewModel.dismissAbout()
+                        viewModel.showSettings.value -> viewModel.dismissSettings()
+                        webView?.canGoBack() == true -> webView?.goBack()
+                        else -> {
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        }
                     }
                 }
             },
