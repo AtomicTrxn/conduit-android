@@ -225,6 +225,16 @@ class WebViewActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        webView?.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        webView?.onPause()
+    }
+
     // Called when the activity is already running and a new notification tap arrives.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
