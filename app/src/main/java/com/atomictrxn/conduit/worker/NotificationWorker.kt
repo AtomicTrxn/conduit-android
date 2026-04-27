@@ -33,11 +33,19 @@ class NotificationWorker
             if (!notificationsEnabled) return Result.success()
 
             return try {
+                val now = System.currentTimeMillis() / 1000L
+                val lastChecked = repository.lastNotificationCheck.first()
+
+                // First run: record current time and skip — don't notify for pre-existing chats.
+                if (lastChecked == 0L) {
+                    repository.setLastNotificationCheck(now)
+                    return Result.success()
+                }
+
                 val service = ApiClient.create(config.serverUrl, config.apiKey)
                 val chats = service.getChats()
-                val lastChecked = repository.lastNotificationCheck.first()
-                val now = System.currentTimeMillis() / 1000L // API returns Unix seconds
-                val newChats = chats.filter { it.updatedAt > lastChecked }
+                // Cap individual fetches to avoid flooding the server.
+                val newChats = chats.filter { it.updatedAt > lastChecked }.take(10)
 
                 newChats.forEach { chat ->
                     val fullChat = runCatching { service.getChat(chat.id) }.getOrNull()
@@ -51,7 +59,6 @@ class NotificationWorker
                     showNotification(chat.id, chat.title, lastAssistantMessage)
                 }
 
-                // Persist the check time so the next run doesn't re-notify the same chats
                 repository.setLastNotificationCheck(now)
                 Result.success()
             } catch (e: Exception) {
