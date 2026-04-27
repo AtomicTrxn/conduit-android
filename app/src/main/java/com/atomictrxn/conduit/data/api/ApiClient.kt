@@ -8,24 +8,31 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    fun create(baseUrl: String, apiKey: String): OpenWebUIService {
-        val client = OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $apiKey")
-                    .build()
-                chain.proceed(request)
-            }
-            .apply {
-                if (BuildConfig.DEBUG) {
-                    addInterceptor(HttpLoggingInterceptor().apply {
-                        level = HttpLoggingInterceptor.Level.BASIC
-                    })
+    fun create(
+        baseUrl: String,
+        apiKey: String,
+    ): OpenWebUIService {
+        val client =
+            OkHttpClient.Builder()
+                .addInterceptor { chain ->
+                    val request =
+                        chain.request().newBuilder()
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .build()
+                    chain.proceed(request)
                 }
-            }
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
+                .apply {
+                    if (BuildConfig.DEBUG) {
+                        addInterceptor(
+                            HttpLoggingInterceptor().apply {
+                                level = HttpLoggingInterceptor.Level.BASIC
+                            },
+                        )
+                    }
+                }
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build()
 
         val url = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
 

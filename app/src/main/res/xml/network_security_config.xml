@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Conduit connects to user-supplied Open WebUI servers which are commonly
+  hosted on private LANs over plain HTTP (e.g. http://192.168.1.50:3000).
+  Android's network-security-config does not support IP-range wildcards, so
+  we cannot restrict cleartext to RFC-1918 addresses only at this layer.
+
+  Cleartext is therefore permitted broadly here, matching the app's intended
+  use case of private/self-hosted servers. Connections to public HTTPS
+  servers work normally. Users are encouraged to put their Open WebUI
+  instance behind a TLS reverse proxy (e.g. Caddy, Nginx) for production use.
+
+  If Android ever adds IP-range support to domain-config this should be
+  tightened to localhost + 10.x + 172.16-31.x + 192.168.x ranges only.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

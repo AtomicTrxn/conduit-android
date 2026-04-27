@@ -22,7 +22,7 @@ import com.atomictrxn.conduit.R
 fun WebViewToolbar(
     visible: Boolean,
     onSettingsClick: () -> Unit,
-    onAboutClick: () -> Unit
+    onAboutClick: () -> Unit,
 ) {
     if (!visible) return
     var menuExpanded by remember { mutableStateOf(false) }
@@ -32,28 +32,28 @@ fun WebViewToolbar(
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.Outlined.MoreVert,
-                    contentDescription = stringResource(R.string.settings)
+                    contentDescription = stringResource(R.string.settings),
                 )
             }
             DropdownMenu(
                 expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
+                onDismissRequest = { menuExpanded = false },
             ) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.settings)) },
                     onClick = {
                         menuExpanded = false
                         onSettingsClick()
-                    }
+                    },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.about)) },
                     onClick = {
                         menuExpanded = false
                         onAboutClick()
-                    }
+                    },
                 )
             }
-        }
+        },
     )
 }

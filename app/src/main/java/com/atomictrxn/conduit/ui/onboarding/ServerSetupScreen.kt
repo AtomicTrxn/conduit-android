@@ -28,25 +28,26 @@ fun ServerSetupScreen(
     serverUrl: String,
     urlError: String?,
     onServerUrlChanged: (String) -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp)
-            .imePadding()
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .imePadding(),
     ) {
         Spacer(modifier = Modifier.height(48.dp))
         Text(
             text = stringResource(R.string.server_setup_title),
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.semantics { heading() }
+            modifier = Modifier.semantics { heading() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.server_setup_helper),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(32.dp))
         OutlinedTextField(
@@ -56,20 +57,22 @@ fun ServerSetupScreen(
             placeholder = { Text(stringResource(R.string.server_setup_hint)) },
             isError = urlError != null,
             supportingText = urlError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Uri,
-                imeAction = ImeAction.Go
-            ),
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = KeyboardType.Uri,
+                    imeAction = ImeAction.Go,
+                ),
             keyboardActions = KeyboardActions(onGo = { onNext() }),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = onNext,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
         ) {
             Text(stringResource(R.string.next))
         }

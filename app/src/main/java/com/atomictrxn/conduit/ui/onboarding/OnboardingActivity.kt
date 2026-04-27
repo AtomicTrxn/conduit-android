@@ -25,7 +25,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class OnboardingActivity : ComponentActivity() {
-
     @Inject lateinit var repository: ServerRepository
     private val viewModel: OnboardingViewModel by viewModels()
 
@@ -50,11 +49,11 @@ class OnboardingActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = "welcome",
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
                     ) {
                         composable("welcome") {
                             WelcomeScreen(
-                                onGetStarted = { navController.navigate("server_setup") }
+                                onGetStarted = { navController.navigate("server_setup") },
                             )
                         }
                         composable("server_setup") {
@@ -66,7 +65,7 @@ class OnboardingActivity : ComponentActivity() {
                                     if (viewModel.submitServerUrl()) {
                                         navController.navigate("api_key")
                                     }
-                                }
+                                },
                             )
                         }
                         composable("api_key") {
@@ -74,7 +73,7 @@ class OnboardingActivity : ComponentActivity() {
                                 apiKey = uiState.apiKey,
                                 onApiKeyChanged = viewModel::onApiKeyChanged,
                                 onContinue = viewModel::completeOnboarding,
-                                onSkip = viewModel::skipApiKey
+                                onSkip = viewModel::skipApiKey,
                             )
                         }
                     }

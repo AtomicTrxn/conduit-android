@@ -30,31 +30,32 @@ fun ApiKeyScreen(
     apiKey: String,
     onApiKeyChanged: (String) -> Unit,
     onContinue: () -> Unit,
-    onSkip: () -> Unit
+    onSkip: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp)
-            .imePadding()
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .imePadding(),
     ) {
         Spacer(modifier = Modifier.height(48.dp))
         Text(
             text = stringResource(R.string.api_key_title),
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.semantics { heading() }
+            modifier = Modifier.semantics { heading() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.api_key_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.api_key_helper),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(32.dp))
         OutlinedTextField(
@@ -65,24 +66,26 @@ fun ApiKeyScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onContinue() }),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(24.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(
                 onClick = onSkip,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .height(48.dp),
             ) {
                 Text(stringResource(R.string.skip))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Button(
                 onClick = onContinue,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .height(48.dp),
             ) {
                 Text(stringResource(R.string.continue_text))
             }

@@ -35,6 +35,7 @@
     <string name="clear_api_key">Clear API key</string>
     <string name="about_version">Version</string>
     <string name="about_version_label">Version %1$s</string>
+    <string name="navigate_back">Back</string>
     <string name="about_back">Back</string>
     <string name="about_description">A native Android client for your self-hosted Open WebUI instance. Access your AI models and chat history with a fast, persistent connection — no browser tab required.</string>
     <string name="about_built_with">Built on open source</string>

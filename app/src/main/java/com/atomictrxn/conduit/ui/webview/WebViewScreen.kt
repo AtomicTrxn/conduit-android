@@ -37,7 +37,7 @@ fun WebViewScreen(
     onPageStarted: () -> Unit,
     onPageFinished: () -> Unit,
     onError: (String, String?) -> Unit,
-    onWebViewCreated: (WebView) -> Unit
+    onWebViewCreated: (WebView) -> Unit,
 ) {
     val currentServerUrl by rememberUpdatedState(serverUrl)
 
@@ -64,84 +64,96 @@ fun WebViewScreen(
                     cm.setAcceptCookie(true)
                     cm.setAcceptThirdPartyCookies(this, true)
                 }
-                webViewClient = object : WebViewClient() {
-                    override fun onPageStarted(
-                        view: WebView,
-                        url: String,
-                        favicon: android.graphics.Bitmap?
-                    ) {
-                        Log.d("Conduit", "onPageStarted: $url")
-                        onPageStarted()
-                    }
+                webViewClient =
+                    object : WebViewClient() {
+                        override fun onPageStarted(
+                            view: WebView,
+                            url: String,
+                            favicon: android.graphics.Bitmap?,
+                        ) {
+                            Log.d("Conduit", "onPageStarted: $url")
+                            onPageStarted()
+                        }
 
-                    override fun onPageFinished(view: WebView, url: String) {
-                        Log.d("Conduit", "onPageFinished: $url")
-                        CookieManager.getInstance().flush()
-                        onPageFinished()
-                    }
+                        override fun onPageFinished(
+                            view: WebView,
+                            url: String,
+                        ) {
+                            Log.d("Conduit", "onPageFinished: $url")
+                            CookieManager.getInstance().flush()
+                            onPageFinished()
+                        }
 
-                    override fun onReceivedError(
-                        view: WebView,
-                        request: WebResourceRequest,
-                        error: WebResourceError
-                    ) {
-                        Log.e("Conduit", "onReceivedError: isMainFrame=${request.isForMainFrame} url=${request.url} err=${error.description}")
-                        if (request.isForMainFrame) {
-                            onError(
-                                request.url.toString(),
-                                error.description?.toString()
+                        override fun onReceivedError(
+                            view: WebView,
+                            request: WebResourceRequest,
+                            error: WebResourceError,
+                        ) {
+                            Log.e(
+                                "Conduit",
+                                "onReceivedError: isMainFrame=${request.isForMainFrame} " +
+                                    "url=${request.url} err=${error.description}",
                             )
+                            if (request.isForMainFrame) {
+                                onError(
+                                    request.url.toString(),
+                                    error.description?.toString(),
+                                )
+                            }
                         }
-                    }
 
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView,
-                        request: WebResourceRequest
-                    ): Boolean {
-                        val url = request.url.toString()
-                        val keep = url.startsWith(currentServerUrl)
-                        Log.d("Conduit", "shouldOverride: $url | serverUrl=$currentServerUrl | keep=$keep")
-                        return if (keep) {
-                            false
-                        } else {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                            true
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): Boolean {
+                            val url = request.url.toString()
+                            val keep = url.startsWith(currentServerUrl)
+                            Log.d("Conduit", "shouldOverride: $url | serverUrl=$currentServerUrl | keep=$keep")
+                            return if (keep) {
+                                false
+                            } else {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                true
+                            }
                         }
                     }
-                }
                 onWebViewCreated(this)
                 if (serverUrl.isNotBlank()) loadUrl(serverUrl)
             }
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     )
 }
 
 @Composable
-fun ConnectionErrorContent(url: String, onRetry: () -> Unit) {
+fun ConnectionErrorContent(
+    url: String,
+    onRetry: () -> Unit,
+) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = stringResource(R.string.connection_failed),
                 style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = url,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = onRetry,
-                modifier = Modifier.height(48.dp)
+                modifier = Modifier.height(48.dp),
             ) {
                 Text(stringResource(R.string.retry))
             }
