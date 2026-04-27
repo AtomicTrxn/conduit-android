@@ -33,6 +33,8 @@
     <string name="settings_apikey_placeholder">Not set</string>
     <string name="settings_notifications_label">Chat completion notifications</string>
     <string name="sync_api_key">Sync from session</string>
+    <string name="api_key_status_persistent">Persistent API key active</string>
+    <string name="api_key_status_session">Session token active — auto-refreshes on login</string>
     <string name="clear_api_key">Clear API key</string>
     <string name="about_version">Version</string>
     <string name="about_version_label">Version %1$s</string>

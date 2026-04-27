@@ -107,6 +107,16 @@ fun SettingsScreen(
                         .padding(horizontal = 16.dp),
             )
 
+            if (uiState.apiKey.isNotBlank()) {
+                val isJwt = uiState.apiKey.count { it == '.' } == 2
+                Text(
+                    text = if (isJwt) stringResource(R.string.api_key_status_session) else stringResource(R.string.api_key_status_persistent),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isJwt) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+
             Row(modifier = Modifier.padding(horizontal = 12.dp)) {
                 TextButton(onClick = onSyncApiKey) {
                     Text(stringResource(R.string.sync_api_key))
