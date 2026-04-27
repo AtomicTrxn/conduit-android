@@ -41,6 +41,7 @@ import com.atomictrxn.conduit.R
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onDismiss: () -> Unit,
+    onSave: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val serverConfig by viewModel.serverConfig.collectAsStateWithLifecycle()
@@ -50,7 +51,7 @@ fun SettingsScreen(
     }
 
     LaunchedEffect(uiState.isSaved) {
-        if (uiState.isSaved) onDismiss()
+        if (uiState.isSaved) onSave()
     }
 
     Scaffold(

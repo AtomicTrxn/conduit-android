@@ -56,6 +56,7 @@ class SettingsViewModel
                             serverUrl = config.serverUrl,
                             apiKey = config.apiKey,
                             notificationsEnabled = repository.notificationsEnabled.first(),
+                            isSaved = false,
                         )
                     }
                 }

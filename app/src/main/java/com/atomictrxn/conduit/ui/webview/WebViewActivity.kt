@@ -159,7 +159,8 @@ class WebViewActivity : ComponentActivity() {
                     ConduitTheme {
                         SettingsScreen(
                             viewModel = settingsViewModel,
-                            onDismiss = {
+                            onDismiss = { viewModel.dismissSettings() },
+                            onSave = {
                                 viewModel.dismissSettings()
                                 wv.reload()
                             },
