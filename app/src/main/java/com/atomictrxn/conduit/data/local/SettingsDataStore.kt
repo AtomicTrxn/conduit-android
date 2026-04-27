@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.atomictrxn.conduit.domain.model.ServerConfig
@@ -25,6 +26,7 @@ class SettingsDataStore @Inject constructor(
         val API_KEY = stringPreferencesKey("api_key")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val LAST_NOTIFICATION_CHECK = longPreferencesKey("last_notification_check")
     }
 
     val serverConfig: Flow<ServerConfig> = context.dataStore.data.map { prefs ->
@@ -40,6 +42,10 @@ class SettingsDataStore @Inject constructor(
 
     val notificationsEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[Keys.NOTIFICATIONS_ENABLED] ?: true
+    }
+
+    val lastNotificationCheck: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[Keys.LAST_NOTIFICATION_CHECK] ?: 0L
     }
 
     suspend fun saveServerConfig(config: ServerConfig) {
@@ -63,5 +69,9 @@ class SettingsDataStore @Inject constructor(
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[Keys.NOTIFICATIONS_ENABLED] = enabled }
+    }
+
+    suspend fun setLastNotificationCheck(timestamp: Long) {
+        context.dataStore.edit { it[Keys.LAST_NOTIFICATION_CHECK] = timestamp }
     }
 }

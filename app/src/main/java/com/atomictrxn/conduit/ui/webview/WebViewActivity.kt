@@ -34,7 +34,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.atomictrxn.conduit.BuildConfig
 import com.atomictrxn.conduit.R
+import com.atomictrxn.conduit.ui.about.AboutScreen
 import com.atomictrxn.conduit.ui.settings.SettingsScreen
 import com.atomictrxn.conduit.ui.settings.SettingsViewModel
 import com.atomictrxn.conduit.ui.theme.ConduitTheme
@@ -89,7 +91,9 @@ class WebViewActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WebView.setWebContentsDebuggingEnabled(true)
+        if (BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -116,7 +120,7 @@ class WebViewActivity : ComponentActivity() {
                     WebViewToolbar(
                         visible = true,
                         onSettingsClick = viewModel::showSettings,
-                        onAboutClick = { /* TODO: About dialog */ }
+                        onAboutClick = viewModel::showAbout
                     )
                 }
             }
@@ -152,10 +156,22 @@ class WebViewActivity : ComponentActivity() {
             }
         }
 
-        // Root: FrameLayout so settings can overlay everything when shown.
+        // About full-screen overlay — GONE until needed.
+        val aboutView = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            visibility = View.GONE
+            setContent {
+                ConduitTheme {
+                    AboutScreen(onDismiss = viewModel::dismissAbout)
+                }
+            }
+        }
+
+        // Root: FrameLayout so overlays can cover everything when shown.
         val root = FrameLayout(this).apply {
             addView(mainLayout, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             addView(settingsView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(aboutView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
         setContentView(root)
 
@@ -166,7 +182,14 @@ class WebViewActivity : ComponentActivity() {
             }
         }
 
-        // Load the server URL whenever it changes.
+        // Show/hide the about overlay in response to ViewModel state.
+        lifecycleScope.launch {
+            viewModel.showAbout.collect { show ->
+                aboutView.visibility = if (show) View.VISIBLE else View.GONE
+            }
+        }
+
+        // Load the server URL whenever it changes, then handle any pending chat deep-link.
         lifecycleScope.launch {
             viewModel.serverConfig.collect { config ->
                 val newUrl = config.serverUrl
@@ -174,10 +197,25 @@ class WebViewActivity : ComponentActivity() {
                 if (newUrl.isNotBlank()) {
                     val loaded = wv.url ?: ""
                     if (!loaded.startsWith(newUrl)) {
-                        wv.loadUrl(newUrl)
+                        val chatId = intent.getStringExtra(EXTRA_CHAT_ID)
+                        if (chatId != null) {
+                            wv.loadUrl("$newUrl/c/$chatId")
+                        } else {
+                            wv.loadUrl(newUrl)
+                        }
                     }
                 }
             }
+        }
+    }
+
+    // Called when the activity is already running and a new notification tap arrives.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: return
+        if (currentServerUrl.isNotBlank()) {
+            webView?.loadUrl("$currentServerUrl/c/$chatId")
         }
     }
 
