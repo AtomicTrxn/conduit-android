@@ -97,7 +97,7 @@ app/
 │   │   ├── models/                     # API request/response models
 │   │   └── ApiClient.kt               # OkHttp + Retrofit setup
 │   ├── local/
-│   │   └── SettingsDataStore.kt       # DataStore wrapper (URL, API key)
+│   │   └── SettingsDataStore.kt       # DataStore (URL, prefs) + EncryptedSharedPreferences (API key)
 │   └── repository/
 │       └── ServerRepository.kt        # Coordinates local + remote
 ├── domain/
@@ -112,15 +112,14 @@ app/
 │   │   ├── ApiKeyScreen.kt            # Optional API key entry
 │   │   └── OnboardingViewModel.kt
 │   ├── webview/
-│   │   ├── WebViewActivity.kt         # Thin host, wires Compose toolbar
-│   │   ├── WebViewScreen.kt           # Compose wrapper around AndroidView(WebView)
+│   │   ├── WebViewActivity.kt         # Hosts WebView + overlay ComposeViews; TokenBridge interface
 │   │   ├── WebViewToolbar.kt          # Auto-hiding native toolbar
-│   │   └── WebViewViewModel.kt        # Connection state, settings dialog
+│   │   └── WebViewViewModel.kt        # Connection state, settings/about visibility
 │   └── settings/
 │       ├── SettingsScreen.kt          # Full settings page
 │       └── SettingsViewModel.kt
 ├── worker/
-│   └── NotificationWorker.kt          # WorkManager job for completion polling
+│   └── NotificationWorker.kt          # WorkManager job for chat polling
 └── App.kt                             # Application class, Hilt entry point
 ```
 
@@ -151,7 +150,9 @@ App Launch
 1. User enters server URL (must begin with `http://` or `https://`)
 2. User enters API key — clearly explained as optional
 3. Skip is prominently available; skipped users land in WebView and log in normally
-4. Both values stored in DataStore via `SettingsDataStore`
+
+### Auto-sync from session
+After each page load, `WebViewActivity` injects a `JavascriptInterface` (`TokenBridge`) that reads `localStorage.token` from the Open WebUI page. The token is only re-fetched when the stored credential is within 24 hours of expiry. If the server supports persistent API keys (`POST /api/v1/auths/api_key`), the short-lived JWT is exchanged for a permanent key; otherwise the JWT is stored directly as the bearer credential. The Settings screen shows which type is active and provides a manual "Sync from session" button and a "Clear API key" button.
 
 ### API Key Gate
 Features that require an API key check `serverConfig.hasApiKey` before activating. If no key is present:
@@ -159,10 +160,15 @@ Features that require an API key check `serverConfig.hasApiKey` before activatin
 - A single contextual prompt explains how to enable it via Settings
 - No crashes, no silent failures
 
+### Storage
+- Server URL and non-sensitive preferences: Jetpack DataStore
+- API key: `EncryptedSharedPreferences` (AES-256-SIV key encryption, AES-256-GCM value encryption)
+- Changing the server URL resets `last_notification_check` so the new server gets a clean first-run baseline
+
 ### Settings
-- Server URL: editable, re-validated on save
-- API key: add / edit / clear
-- Changing URL reloads the WebView
+- Server URL: editable, re-validated on save; WebView reloads only when the URL actually changes
+- API key: status label shows persistent vs. session token; sync / clear buttons
+- Notifications toggle: disabled with explanation when no API key is set
 
 ---
 
@@ -181,19 +187,20 @@ A **thin auto-hiding native toolbar** sits above the WebView:
 
 ### In Scope
 
-| Feature | Notes |
-|---------|-------|
-| Onboarding (URL + optional API key) | Full flow with skip |
-| WebView core | Full Open WebUI UI |
-| Auto-hiding toolbar + three-dot menu | Settings access |
-| Settings screen | URL, API key, clear data |
-| Connection error page with Retry | Replaces silent blank screen |
-| Push notifications on chat completion | Requires API key — disabled otherwise |
-| Back navigation within WebView | Hardware/gesture back navigates WebView history |
-| Camera support | File chooser + camera capture |
-| Microphone support | Correct `onPermissionRequest` flow |
-| File downloads | Via system DownloadManager |
-| Share to Conduit | Receive shared text and images |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Onboarding (URL + optional API key) | Done | Full flow with skip |
+| WebView core | Done | Full Open WebUI UI |
+| Auto-hiding toolbar + three-dot menu | Done | Settings access |
+| Settings screen | Done | URL, API key (with status label + sync), notifications toggle |
+| Connection error page with Retry | Done | Replaces silent blank screen |
+| Push notifications on chat update | Done | Requires API key — disabled otherwise |
+| API key auto-sync from WebView session | Done | JWT extracted via JavascriptInterface; upgraded to persistent key if server supports it |
+| Back navigation within WebView | Done | Hardware/gesture back navigates WebView history |
+| Camera support | Done | File chooser + camera capture; temp files cleaned up |
+| Microphone support | Done | Correct `onPermissionRequest` flow |
+| File downloads | **Not implemented** | Via system DownloadManager — planned v1 |
+| Share to Conduit | **Not implemented** | Receive shared text and images — planned v1 |
 
 ### Explicitly Out of Scope (v1)
 
@@ -229,20 +236,17 @@ Follows [Android Accessibility Guidelines](https://developer.android.com/design/
 
 ## Open WebUI API Integration (v1)
 
-Only the notification polling endpoint is used in v1. Full API client is scaffolded for v2 expansion.
-
 | Endpoint | Used In | v1 / v2 |
 |----------|---------|---------|
-| `GET /api/chats/{id}` | Notification polling | v1 |
+| `GET /api/v1/chats/` | Notification polling | v1 |
+| `POST /api/v1/auths/api_key` | API key upgrade from session JWT | v1 |
 | `GET /api/models` | Native model picker | v2 |
-| `GET /api/chats` | Conversation list | v2 |
 | `POST /api/chat/completions` | Streaming chat | v2 |
 | `POST /api/v1/files/` | Background file upload | v2 |
 | `GET /api/v1/files/{id}/process/status` | Upload progress | v2 |
 
 ### Authentication
-All API calls use `Authorization: Bearer <api_key>` header.
-API keys are `sk-` prefixed tokens generated from Open WebUI Settings → Account.
+All API calls use `Authorization: Bearer <token>` header, where `<token>` is either a persistent `sk-` prefixed API key or the session JWT obtained from the WebView's `localStorage.token`.
 
 ---
 
@@ -251,10 +255,14 @@ API keys are `sk-` prefixed tokens generated from Open WebUI Settings → Accoun
 Uses `WorkManager` with a periodic polling job:
 
 1. `NotificationWorker` runs every 15 minutes (minimum WorkManager interval)
-2. Calls `GET /api/chats` to check for new assistant messages since last check
-3. If new messages found, fires an Android notification
-4. Tapping notification deep-links into the WebView at that chat
-5. Entire feature disabled (worker not scheduled) when no API key is set
+2. Calls `GET /api/v1/chats/` to fetch all chats
+3. Any chat whose `updated_at` exceeds the last-check timestamp gets a notification (up to 10 per run)
+4. First run records the current timestamp and skips — avoids notifying for pre-existing chats
+5. Tapping a notification deep-links into the WebView at that chat
+6. Entire feature disabled (worker not scheduled) when no API key is set
+7. Changing the server URL resets the last-check timestamp
+
+**Note:** `updated_at` fires on any chat change (rename, edit, new message) — not exclusively on assistant completion. No finer-grained event is available on the polling API.
 
 ---
 
@@ -372,7 +380,7 @@ Follows [Android Notification Design Guide](https://developer.android.com/design
 | Importance | `HIGH` (sound + heads-up) |
 | Template | Standard |
 | Header text | "Response ready" (≤ 30 chars) |
-| Content text | First ~40 chars of assistant response |
+| Content text | Chat title (from `GET /api/v1/chats/`) |
 | Large icon | None (no person photo applicable) |
 | Category | `CATEGORY_MESSAGE` |
 | Tap action | Deep-link to WebView at that chat |
