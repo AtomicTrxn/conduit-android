@@ -92,4 +92,31 @@ class SettingsViewModelTest {
 
         assertEquals("", viewModel.uiState.value.apiKey)
     }
+
+    @Test
+    fun blankUrlBlocksSave() {
+        val viewModel = SettingsViewModel(FakeConduitRepository(), FakeStringProvider())
+
+        viewModel.onServerUrlChanged("")
+
+        assertFalse(viewModel.saveSettings())
+        assertNotNull(viewModel.uiState.value.urlError)
+    }
+
+    @Test
+    fun isSavedFlagResetsOnSubsequentLoad() =
+        runTest {
+            val repository = FakeConduitRepository(initialConfig = ServerConfig("https://openwebui.example.com", ""))
+            val viewModel = SettingsViewModel(repository, FakeStringProvider())
+
+            viewModel.onServerUrlChanged("https://openwebui.example.com")
+            assertTrue(viewModel.saveSettings())
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isSaved)
+
+            viewModel.loadCurrentConfig()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isSaved)
+        }
 }

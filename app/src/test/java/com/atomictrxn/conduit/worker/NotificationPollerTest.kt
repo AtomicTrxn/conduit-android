@@ -107,6 +107,49 @@ class NotificationPollerTest {
             assertEquals(100L, repository.currentLastNotificationCheck)
         }
 
+    @Test
+    fun chatsAtOrBeforeLastCheckAreExcluded() =
+        runTest {
+            val chats =
+                listOf(
+                    ChatListItem(id = "old", title = "Old", updatedAt = 100L),
+                    ChatListItem(id = "exact", title = "Exact", updatedAt = 200L),
+                    ChatListItem(id = "new", title = "New", updatedAt = 201L),
+                )
+            val poller =
+                NotificationPoller(
+                    FakeConduitRepository(
+                        initialConfig = ServerConfig("https://openwebui.example.com", "api-key"),
+                        lastNotificationCheck = 200L,
+                    ),
+                    FakeOpenWebUIServiceFactory(FakeOpenWebUIService(chatsProvider = { chats })),
+                )
+
+            val result = poller.poll(nowEpochSeconds = NOW)
+
+            assertSuccessWithChatCount(result, 1)
+            assertEquals("new", (result as NotificationPollResult.Success).chats.first().id)
+        }
+
+    @Test
+    fun timestampAdvancedAfterSuccessfulPoll() =
+        runTest {
+            val repository =
+                FakeConduitRepository(
+                    initialConfig = ServerConfig("https://openwebui.example.com", "api-key"),
+                    lastNotificationCheck = 100L,
+                )
+            val poller =
+                NotificationPoller(
+                    repository,
+                    FakeOpenWebUIServiceFactory(FakeOpenWebUIService(chatsProvider = { emptyList() })),
+                )
+
+            poller.poll(nowEpochSeconds = NOW)
+
+            assertEquals(NOW, repository.currentLastNotificationCheck)
+        }
+
     private fun assertSuccessWithChatCount(
         result: NotificationPollResult,
         count: Int,

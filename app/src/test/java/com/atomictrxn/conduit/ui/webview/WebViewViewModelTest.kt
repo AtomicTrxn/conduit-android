@@ -9,6 +9,7 @@ import com.atomictrxn.conduit.test.FakeOpenWebUIServiceFactory
 import com.atomictrxn.conduit.test.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -95,4 +96,47 @@ class WebViewViewModelTest {
         viewModel.onConnectionError("https://openwebui.example.com", "failed")
         assertTrue(viewModel.connectionState.value is ConnectionState.Error)
     }
+
+    @Test
+    fun showSettingsAndDismissTogglesState() {
+        val viewModel = WebViewViewModel(FakeConduitRepository(), FakeOpenWebUIServiceFactory())
+
+        viewModel.showSettings()
+        assertTrue(viewModel.showSettings.value)
+
+        viewModel.dismissSettings()
+        assertFalse(viewModel.showSettings.value)
+    }
+
+    @Test
+    fun showAboutAndDismissTogglesState() {
+        val viewModel = WebViewViewModel(FakeConduitRepository(), FakeOpenWebUIServiceFactory())
+
+        viewModel.showAbout()
+        assertTrue(viewModel.showAbout.value)
+
+        viewModel.dismissAbout()
+        assertFalse(viewModel.showAbout.value)
+    }
+
+    @Test
+    fun saveLastChatPersistsToRepository() =
+        runTest {
+            val repository = FakeConduitRepository()
+            val viewModel = WebViewViewModel(repository, FakeOpenWebUIServiceFactory())
+
+            viewModel.saveLastChat("chat-42", "https://openwebui.example.com/c/chat-42")
+
+            assertEquals("chat-42" to "https://openwebui.example.com/c/chat-42", repository.savedLastChat)
+        }
+
+    @Test
+    fun initialUrlFallsBackToRootWhenNoApiKey() =
+        runTest {
+            val viewModel = WebViewViewModel(FakeConduitRepository(), FakeOpenWebUIServiceFactory())
+
+            val result = viewModel.initialUrlFor(ServerConfig("https://openwebui.example.com", ""))
+
+            assertEquals("https://openwebui.example.com", result)
+        }
 }
