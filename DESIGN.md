@@ -60,10 +60,11 @@ DataStore   Open WebUI API
 |-------|---------------|
 | **UI (Compose)** | Render state, dispatch user events, no business logic |
 | **ViewModel** | Hold and transform UI state, survive rotation, expose `StateFlow` |
-| **Repository** | Single source of truth — coordinates local DataStore and remote API |
-| **DataStore** | Persists server URL and API key (replaces SharedPreferences) |
-| **API Client** | Retrofit + OkHttp against OpenAI-compatible Open WebUI endpoints |
-| **WorkManager** | Background jobs — notification polling, file processing |
+| **Repository** | Interface + implementation — coordinates local DataStore and remote API |
+| **Domain** | Pure Kotlin business logic — URL validation, JWT policy, link routing, URL parsing |
+| **DataStore** | Persists server URL and prefs; API key in `EncryptedSharedPreferences` |
+| **API Client** | Retrofit + OkHttp against Open WebUI endpoints |
+| **WorkManager** | Background jobs — notification polling |
 | **App** | Application class — initializes DI, accessibility gate for WebView |
 
 ---
@@ -94,23 +95,36 @@ app/
 ├── data/
 │   ├── api/
 │   │   ├── OpenWebUIService.kt         # Retrofit interface
+│   │   ├── OpenWebUIServiceFactory.kt  # Lazy per-(url, key) service factory
 │   │   ├── models/                     # API request/response models
 │   │   └── ApiClient.kt               # OkHttp + Retrofit setup
 │   ├── local/
 │   │   └── SettingsDataStore.kt       # DataStore (URL, prefs) + EncryptedSharedPreferences (API key)
 │   └── repository/
-│       └── ServerRepository.kt        # Coordinates local + remote
+│       ├── ConduitRepository.kt       # Interface for all data operations
+│       └── ServerRepository.kt        # ConduitRepository implementation
 ├── domain/
+│   ├── auth/
+│   │   └── JwtRefreshPolicy.kt        # Decode JWT exp; trigger refresh within 24h of expiry
+│   ├── navigation/
+│   │   ├── ExternalLinkPolicy.kt      # Route URLs: keep / download / external / block
+│   │   └── WebViewNavigation.kt       # Chat URL parsing + resume URL selection
+│   ├── validation/
+│   │   └── ServerUrlValidator.kt      # Allow HTTPS + localhost/LAN/Tailscale HTTP; reject public HTTP
 │   └── model/
 │       ├── ServerConfig.kt            # URL + API key state
-│       └── ConnectionState.kt        # Loading / Connected / Error
+│       └── ConnectionState.kt         # Loading / Connected / Error
 ├── ui/
+│   ├── common/
+│   │   └── StringProvider.kt          # String resource abstraction for testability
 │   ├── onboarding/
 │   │   ├── OnboardingActivity.kt
-│   │   ├── WelcomeScreen.kt           # Compose screen
-│   │   ├── ServerSetupScreen.kt       # URL entry
-│   │   ├── ApiKeyScreen.kt            # Optional API key entry
+│   │   ├── WelcomeScreen.kt
+│   │   ├── ServerSetupScreen.kt
+│   │   ├── ApiKeyScreen.kt
 │   │   └── OnboardingViewModel.kt
+│   ├── splash/
+│   │   └── SplashActivity.kt          # Startup splash; routes to onboarding or WebView
 │   ├── webview/
 │   │   ├── WebViewActivity.kt         # Hosts WebView + overlay ComposeViews; TokenBridge interface
 │   │   ├── WebViewToolbar.kt          # Auto-hiding native toolbar
@@ -119,7 +133,8 @@ app/
 │       ├── SettingsScreen.kt          # Full settings page
 │       └── SettingsViewModel.kt
 ├── worker/
-│   └── NotificationWorker.kt          # WorkManager job for chat polling
+│   ├── NotificationPoller.kt          # Testable polling logic (injectable)
+│   └── NotificationWorker.kt          # WorkManager entry point, delegates to NotificationPoller
 └── App.kt                             # Application class, Hilt entry point
 ```
 
@@ -196,11 +211,11 @@ A **thin auto-hiding native toolbar** sits above the WebView:
 | Connection error page with Retry | Done | Replaces silent blank screen |
 | Push notifications on chat update | Done | Requires API key — disabled otherwise |
 | API key auto-sync from WebView session | Done | JWT extracted via JavascriptInterface; upgraded to persistent key if server supports it |
-| Back navigation within WebView | Done | Hardware/gesture back navigates WebView history |
+| Back navigation within WebView | Done | About → Settings → notification nav → WebView history → system back |
 | Camera support | Done | File chooser + camera capture; temp files cleaned up |
 | Microphone support | Done | Correct `onPermissionRequest` flow |
-| File downloads | Done | Via system DownloadManager into public Downloads |
-| Share to Conduit | Done | Receive shared text/images/files and open configured WebUI |
+| File downloads | Done | Via system DownloadManager into public Downloads folder |
+| Share to Conduit | Partial | Manifest intent-filter in place; activity receives intent and navigates to server root — shared content not yet passed to the WebUI |
 
 ### Explicitly Out of Scope (v1)
 
@@ -276,6 +291,8 @@ Uses `WorkManager` with a periodic polling job:
 | Auto-hiding toolbar over floating button | Toolbar | Less intrusive, standard Android pattern, no WebView overlap |
 | WorkManager over foreground service | WorkManager | Battery-friendly, system-managed, appropriate for polling |
 | DataStore over SharedPreferences | DataStore | Type-safe, coroutine-native, no main-thread I/O risk |
+| Domain layer extracted from ViewModels | `domain/` package | Pure Kotlin logic is unit-testable without Android framework; `ServerUrlValidator`, `JwtRefreshPolicy`, `ExternalLinkPolicy`, `WebViewNavigation`, `NotificationPoller` all tested in isolation |
+| Repository behind interface | `ConduitRepository` interface | Enables fake implementations in tests without mocking framework |
 
 ---
 
@@ -327,8 +344,12 @@ All native screens follow the Android Mobile Design Guidelines reviewed below.
 ### Predictive Back
 
 - Opt into Android predictive back via `android:enableOnBackInvokedCallback="true"` in manifest
-- `OnBackPressedCallback` used for WebView back stack navigation
-- Back-within-WebView handled before activity back — preserves in-page navigation
+- `OnBackPressedCallback` in `WebViewActivity` handles overlays and WebView history in order:
+  1. Dismiss About overlay if visible
+  2. Dismiss Settings overlay if visible
+  3. Navigate back from notification-deep-linked chat to previous chat
+  4. Go back in WebView history if possible
+  5. Fall through to system back (exit app)
 - Exit animation: standard system back-to-home animation (no custom override needed for v1)
 - 8dp margin from screen edges respected for all swipe targets
 

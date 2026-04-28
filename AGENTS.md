@@ -19,24 +19,30 @@ Conduit is a native Android WebView shell for self-hosted [Open WebUI](https://g
 ```
 com.atomictrxn.conduit
 ├── data/
-│   ├── api/          # Retrofit service, OkHttp client, API models
+│   ├── api/          # Retrofit service + factory, OkHttp client, API models
 │   ├── local/        # SettingsDataStore (server URL, prefs); API key in EncryptedSharedPreferences
-│   └── repository/   # ServerRepository — coordinates data sources
+│   └── repository/   # ConduitRepository interface + ServerRepository implementation
 ├── di/               # Hilt AppModule
-├── domain/model/     # ConnectionState, ServerConfig
+├── domain/
+│   ├── auth/         # JwtRefreshPolicy — decode exp, trigger refresh within 24h
+│   ├── navigation/   # ExternalLinkPolicy (keep/download/external/block), WebViewNavigation (URL utils)
+│   ├── validation/   # ServerUrlValidator — allow HTTPS + localhost/LAN/Tailscale HTTP
+│   └── model/        # ConnectionState, ServerConfig
 ├── ui/
 │   ├── about/        # AboutScreen
+│   ├── common/       # StringProvider (string resource abstraction for testability)
 │   ├── onboarding/   # Welcome → ServerSetup → ApiKey flow
 │   ├── settings/     # SettingsScreen + SettingsViewModel
+│   ├── splash/       # SplashActivity — routes to onboarding or WebView
 │   ├── theme/        # Material3 color, type, theme
 │   └── webview/      # WebViewActivity, WebViewToolbar, WebViewViewModel
-└── worker/           # NotificationWorker
+└── worker/           # NotificationPoller (injectable logic) + NotificationWorker (WorkManager entry)
 ```
 
 ### Key design decisions
 
 - The `WebView` is created imperatively in `WebViewActivity` and injected into the Compose tree via `AndroidView`. This avoids recomposition destroying and recreating the WebView, which would lose page state.
-- Back-press handling in `WebViewActivity` checks: About open → Settings open → WebView can go back → system back, in that order.
+- Back-press handling in `WebViewActivity` runs in order: dismiss About overlay → dismiss Settings overlay → navigate back from notification-deep-linked chat → WebView history → system back.
 - Cleartext HTTP is permitted broadly via `network_security_config.xml` because Android's domain-config does not support IP-range wildcards. Runtime server URL validation restricts saved `http://` URLs to localhost, private networks, link-local hosts, Tailscale IPs, MagicDNS names, and single-label local names.
 - The API key is stored in `EncryptedSharedPreferences` (AES-256-GCM) and auto-synced from the active WebView session via a `JavascriptInterface` (`TokenBridge`) that reads `localStorage.token`. If the server supports persistent API keys (`POST /api/v1/auths/api_key`) the JWT is upgraded; otherwise the JWT itself is stored as the bearer credential. Re-sync is only triggered when the stored token is within 24 hours of expiry.
 - Notifications use `GET /api/v1/chats/` and fire for any chat whose `updated_at` exceeds the last-check timestamp — not exclusively on assistant completion. This may catch renames and manual edits; no finer-grained completion event is available on the polling API.
@@ -68,6 +74,27 @@ Kotlin style is enforced with ktlint v12. **Always run `ktlintFormat` before com
 ```
 
 The `.editorconfig` at the root configures ktlint with Compose PascalCase conventions.
+
+## Tests
+
+Unit tests live in `app/src/test/`. All domain logic has coverage:
+
+| File | What it tests |
+|------|--------------|
+| `ServerUrlValidatorTest` | HTTPS, localhost, private IPs, Tailscale, public HTTP rejection |
+| `JwtRefreshPolicyTest` | Expiry decoding, 24h threshold, malformed token handling |
+| `ExternalLinkPolicyTest` | Keep / download / external / block routing |
+| `WebViewNavigationTest` | Chat URL parsing and resume URL selection |
+| `NotificationPollerTest` | No API key, notifications off, first-run skip, chat limit, API failure |
+| `SettingsViewModelTest` | URL validation errors, save flow, URL-changed flag |
+| `OnboardingViewModelTest` | Screen transitions, URL validation, skip flow |
+| `WebViewViewModelTest` | Initial URL logic, title trimming |
+
+Test helpers: `Fakes.kt` (fake `ConduitRepository`), `MainDispatcherRule.kt` (coroutine test dispatcher).
+
+Code coverage is measured with Kover (`./gradlew koverHtmlReport`). No minimum threshold is enforced in CI yet.
+
+`app/src/androidTest/` exists but contains no instrumented tests.
 
 ## CI
 
