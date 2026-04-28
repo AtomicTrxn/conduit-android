@@ -2,11 +2,14 @@ package com.atomictrxn.conduit.ui.webview
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -14,6 +17,7 @@ import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
+import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -23,6 +27,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
@@ -40,9 +45,15 @@ import androidx.work.WorkManager
 import com.atomictrxn.conduit.BuildConfig
 import com.atomictrxn.conduit.R
 import com.atomictrxn.conduit.data.api.ApiClient
+import com.atomictrxn.conduit.domain.auth.JwtRefreshPolicy
+import com.atomictrxn.conduit.domain.model.ConnectionState
+import com.atomictrxn.conduit.domain.navigation.ExternalLinkAction
+import com.atomictrxn.conduit.domain.navigation.ExternalLinkPolicy
+import com.atomictrxn.conduit.domain.navigation.WebViewNavigation
 import com.atomictrxn.conduit.ui.about.AboutScreen
 import com.atomictrxn.conduit.ui.settings.SettingsScreen
 import com.atomictrxn.conduit.ui.settings.SettingsViewModel
+import com.atomictrxn.conduit.ui.splash.ConduitSplash
 import com.atomictrxn.conduit.ui.theme.ConduitTheme
 import com.atomictrxn.conduit.worker.NotificationWorker
 import dagger.hilt.android.AndroidEntryPoint
@@ -65,6 +76,12 @@ class WebViewActivity : ComponentActivity() {
     // Written from a coroutine, read synchronously in shouldOverrideUrlLoading.
     @Volatile
     private var currentServerUrl: String = ""
+    private var currentChatUrl: String? = null
+    private var previousChatUrl: String? = null
+    private var notificationChatUrl: String? = null
+    private var hasLoadedInitialUrl = false
+    private var startupSplashView: View? = null
+    private var startupSplashDismissed = false
 
     private val fileChooserLauncher =
         registerForActivityResult(
@@ -112,6 +129,11 @@ class WebViewActivity : ComponentActivity() {
                     when {
                         viewModel.showAbout.value -> viewModel.dismissAbout()
                         viewModel.showSettings.value -> viewModel.dismissSettings()
+                        notificationChatUrl != null && previousChatUrl != null -> {
+                            webView?.loadUrl(previousChatUrl!!)
+                            notificationChatUrl = null
+                            previousChatUrl = null
+                        }
                         webView?.canGoBack() == true -> webView?.goBack()
                         else -> {
                             isEnabled = false
@@ -126,6 +148,11 @@ class WebViewActivity : ComponentActivity() {
 
         val wv = createWebView()
         webView = wv
+        val initialNotificationChatId = intent.getStringExtra(EXTRA_CHAT_ID)
+        hasLoadedInitialUrl = initialNotificationChatId == null && restoreWebViewState(wv, savedInstanceState)
+        val showStartupSplash =
+            savedInstanceState == null &&
+                intent.getBooleanExtra(EXTRA_SHOW_STARTUP_SPLASH, false)
 
         // Toolbar ComposeView — WRAP_CONTENT height so it sits above the WebView
         // with no overlap. No transparency tricks needed.
@@ -134,10 +161,12 @@ class WebViewActivity : ComponentActivity() {
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
                 setContent {
                     val connectionState by viewModel.connectionState.collectAsState()
+                    val pageTitle by viewModel.pageTitle.collectAsState()
                     ConduitTheme {
                         WebViewToolbar(
                             visible = true,
                             connectionState = connectionState,
+                            title = pageTitle,
                             onSettingsClick = viewModel::showSettings,
                             onAboutClick = viewModel::showAbout,
                         )
@@ -192,12 +221,29 @@ class WebViewActivity : ComponentActivity() {
                 }
             }
 
+        val startupSplashOverlay =
+            ComposeView(this).apply {
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+                visibility = if (showStartupSplash) View.VISIBLE else View.GONE
+                alpha = if (showStartupSplash) 1f else 0f
+                setContent {
+                    ConduitTheme {
+                        ConduitSplash()
+                    }
+                }
+            }
+        startupSplashView = startupSplashOverlay.takeIf { showStartupSplash }
+
         // Root: FrameLayout so overlays can cover everything when shown.
         val root =
             FrameLayout(this).apply {
                 addView(mainLayout, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                 addView(settingsView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                 addView(aboutView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                addView(
+                    startupSplashOverlay,
+                    FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+                )
             }
         setContentView(root)
 
@@ -216,24 +262,31 @@ class WebViewActivity : ComponentActivity() {
             }
         }
 
-        // Load the server URL whenever it changes, then handle any pending chat deep-link.
+        lifecycleScope.launch {
+            viewModel.connectionState.collect { state ->
+                if (state is ConnectionState.Connected) {
+                    dismissStartupSplash()
+                }
+            }
+        }
+
+        // Load the initial target once: notification chat, newest API chat, persisted chat, then root.
         lifecycleScope.launch {
             viewModel.serverConfig.collect { config ->
                 val newUrl = config.serverUrl
                 currentServerUrl = newUrl
-                if (newUrl.isNotBlank()) {
-                    val loaded = wv.url ?: ""
-                    if (!loaded.startsWith(newUrl)) {
-                        val chatId = intent.getStringExtra(EXTRA_CHAT_ID)
-                        if (chatId != null) {
-                            wv.loadUrl("$newUrl/c/${Uri.encode(chatId.take(128))}")
-                        } else {
-                            wv.loadUrl(newUrl)
-                        }
+                if (newUrl.isNotBlank() && !hasLoadedInitialUrl) {
+                    hasLoadedInitialUrl = true
+                    if (initialNotificationChatId != null) {
+                        loadNotificationChat(wv, newUrl, initialNotificationChatId)
+                    } else {
+                        wv.loadUrl(viewModel.initialUrlFor(config))
                     }
                 }
             }
         }
+
+        handleShareIntent(intent)
     }
 
     override fun onResume() {
@@ -246,13 +299,21 @@ class WebViewActivity : ComponentActivity() {
         webView?.onPause()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val webViewState = Bundle()
+        webView?.saveState(webViewState)
+        outState.putBundle(KEY_WEBVIEW_STATE, webViewState)
+    }
+
     // Called when the activity is already running and a new notification tap arrives.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleShareIntent(intent)
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: return
         if (currentServerUrl.isNotBlank()) {
-            webView?.loadUrl("$currentServerUrl/c/${Uri.encode(chatId.take(128))}")
+            webView?.let { loadNotificationChat(it, currentServerUrl, chatId) }
         }
     }
 
@@ -275,6 +336,9 @@ class WebViewActivity : ComponentActivity() {
             cm.setAcceptCookie(true)
             cm.setAcceptThirdPartyCookies(wv, false)
         }
+        wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+            enqueueDownload(url, userAgent, contentDisposition, mimeType)
+        }
         wv.webViewClient =
             object : WebViewClient() {
                 override fun onPageStarted(
@@ -293,10 +357,14 @@ class WebViewActivity : ComponentActivity() {
                     Log.d("Conduit", "onPageFinished: $url")
                     CookieManager.getInstance().flush()
                     viewModel.onPageFinished()
+                    WebViewNavigation.chatLocationFor(currentServerUrl, url)?.let { chat ->
+                        currentChatUrl = chat.url
+                        viewModel.saveLastChat(chat.id, chat.url)
+                    }
                     val storedKey = viewModel.serverConfig.value.apiKey
                     if (currentServerUrl.isNotBlank() &&
                         url.startsWith(currentServerUrl) &&
-                        jwtNeedsRefresh(storedKey)
+                        JwtRefreshPolicy.needsRefresh(storedKey)
                     ) {
                         injectTokenBridge(view)
                     }
@@ -318,16 +386,22 @@ class WebViewActivity : ComponentActivity() {
                     request: WebResourceRequest,
                 ): Boolean {
                     val url = request.url.toString()
-                    val scheme = request.url.scheme?.lowercase()
-                    if (currentServerUrl.isNotBlank() && url.startsWith(currentServerUrl)) {
-                        Log.d("Conduit", "shouldOverride: keeping in WebView: $url")
-                        return false
-                    }
-                    if (scheme == "http" || scheme == "https") {
-                        Log.d("Conduit", "shouldOverride: opening externally: $url")
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    } else {
-                        Log.w("Conduit", "shouldOverride: blocked non-http(s) URL scheme '$scheme': $url")
+                    when (val action = ExternalLinkPolicy.decide(currentServerUrl, url)) {
+                        ExternalLinkAction.KeepInWebView -> {
+                            Log.d("Conduit", "shouldOverride: keeping in WebView: $url")
+                            return false
+                        }
+                        ExternalLinkAction.Download -> {
+                            Log.d("Conduit", "shouldOverride: downloading external file: $url")
+                            enqueueDownload(url, request.requestHeaders["User-Agent"], null, null)
+                        }
+                        ExternalLinkAction.OpenExternally -> {
+                            Log.d("Conduit", "shouldOverride: opening externally: $url")
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
+                        is ExternalLinkAction.Block -> {
+                            Log.w("Conduit", "shouldOverride: blocked non-http(s) URL scheme '${action.scheme}': $url")
+                        }
                     }
                     return true
                 }
@@ -385,6 +459,13 @@ class WebViewActivity : ComponentActivity() {
                 return true
             }
 
+            override fun onReceivedTitle(
+                view: WebView,
+                title: String?,
+            ) {
+                viewModel.onPageTitleChanged(title)
+            }
+
             override fun onPermissionRequest(request: PermissionRequest) {
                 val audioRequested = request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
                 if (audioRequested) {
@@ -403,6 +484,84 @@ class WebViewActivity : ComponentActivity() {
                 }
             }
         }
+
+    private fun restoreWebViewState(
+        webView: WebView,
+        savedInstanceState: Bundle?,
+    ): Boolean {
+        val webViewState = savedInstanceState?.getBundle(KEY_WEBVIEW_STATE) ?: return false
+        return webView.restoreState(webViewState) != null
+    }
+
+    private fun loadNotificationChat(
+        webView: WebView,
+        serverUrl: String,
+        chatId: String,
+    ) {
+        val targetUrl = WebViewNavigation.chatUrl(serverUrl, chatId)
+        previousChatUrl = currentChatUrl?.takeIf { it != targetUrl }
+        notificationChatUrl = targetUrl
+        webView.loadUrl(targetUrl)
+    }
+
+    private fun dismissStartupSplash() {
+        val splash = startupSplashView ?: return
+        if (startupSplashDismissed) return
+        startupSplashDismissed = true
+        splash.animate()
+            .alpha(0f)
+            .setDuration(STARTUP_SPLASH_FADE_MS)
+            .withEndAction {
+                splash.visibility = View.GONE
+                startupSplashView = null
+            }
+            .start()
+    }
+
+    private fun enqueueDownload(
+        url: String,
+        userAgent: String?,
+        contentDisposition: String?,
+        mimeType: String?,
+    ) {
+        try {
+            val uri = Uri.parse(url)
+            val fileName = URLUtil.guessFileName(url, contentDisposition, mimeType)
+            val request =
+                DownloadManager.Request(uri)
+                    .setTitle(fileName)
+                    .setDescription(uri.host ?: getString(R.string.app_name))
+                    .setMimeType(mimeType)
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setAllowedOverMetered(true)
+                    .setAllowedOverRoaming(true)
+
+            userAgent?.takeIf { it.isNotBlank() }?.let {
+                request.addRequestHeader("User-Agent", it)
+            }
+            CookieManager.getInstance().getCookie(url)?.takeIf { it.isNotBlank() }?.let {
+                request.addRequestHeader("Cookie", it)
+            }
+
+            val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadManager.enqueue(request)
+            Toast.makeText(this, R.string.download_started, Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("Conduit", "Failed to start download: $url", e)
+            Toast.makeText(this, R.string.download_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun handleShareIntent(intent: Intent?) {
+        val action = intent?.action
+        if (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) return
+
+        Toast.makeText(this, R.string.share_received, Toast.LENGTH_SHORT).show()
+        if (currentServerUrl.isNotBlank()) {
+            webView?.loadUrl(currentServerUrl)
+        }
+    }
 
     private fun scheduleNotificationWorker() {
         val wm = WorkManager.getInstance(this)
@@ -428,25 +587,6 @@ class WebViewActivity : ComponentActivity() {
             ) {
                 notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-        }
-    }
-
-    private fun jwtNeedsRefresh(storedKey: String): Boolean {
-        if (storedKey.isBlank()) return true
-        val parts = storedKey.split(".")
-        if (parts.size != 3) return false // not a JWT — permanent API key, never refresh
-        return try {
-            val payload =
-                android.util.Base64.decode(
-                    parts[1].padEnd((parts[1].length + 3) / 4 * 4, '='),
-                    android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP,
-                )
-            val json = org.json.JSONObject(String(payload))
-            val exp = json.optLong("exp", 0L)
-            val refreshThreshold = System.currentTimeMillis() / 1000L + 24 * 60 * 60
-            exp < refreshThreshold
-        } catch (e: Exception) {
-            true // can't decode — refresh to be safe
         }
     }
 
@@ -486,5 +626,8 @@ class WebViewActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_CHAT_ID = "extra_chat_id"
+        const val EXTRA_SHOW_STARTUP_SPLASH = "extra_show_startup_splash"
+        private const val KEY_WEBVIEW_STATE = "webview_state"
+        private const val STARTUP_SPLASH_FADE_MS = 280L
     }
 }

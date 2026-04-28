@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.atomictrxn.conduit.R
 import com.atomictrxn.conduit.domain.model.ConnectionState
@@ -37,11 +38,13 @@ import com.atomictrxn.conduit.domain.model.ConnectionState
 fun WebViewToolbar(
     visible: Boolean,
     connectionState: ConnectionState,
+    title: String,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
 ) {
     if (!visible) return
     var menuExpanded by remember { mutableStateOf(false) }
+    val displayTitle = title.ifBlank { stringResource(R.string.app_name) }
     TopAppBar(
         title = {
             Row(
@@ -53,8 +56,12 @@ fun WebViewToolbar(
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
                 )
-                Text(stringResource(R.string.app_name))
                 ConnectionStatusIndicator(connectionState)
+                Text(
+                    text = displayTitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         },
         actions = {

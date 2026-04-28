@@ -11,21 +11,27 @@ class ServerRepository
     @Inject
     constructor(
         private val dataStore: SettingsDataStore,
-    ) {
-        val serverConfig: Flow<ServerConfig> = dataStore.serverConfig
-        val onboardingComplete: Flow<Boolean> = dataStore.onboardingComplete
-        val notificationsEnabled: Flow<Boolean> = dataStore.notificationsEnabled
-        val lastNotificationCheck: Flow<Long> = dataStore.lastNotificationCheck
+    ) : ConduitRepository {
+        override val serverConfig: Flow<ServerConfig> = dataStore.serverConfig
+        override val onboardingComplete: Flow<Boolean> = dataStore.onboardingComplete
+        override val notificationsEnabled: Flow<Boolean> = dataStore.notificationsEnabled
+        override val lastNotificationCheck: Flow<Long> = dataStore.lastNotificationCheck
+        override val lastChatUrl: Flow<String> = dataStore.lastChatUrl
 
-        suspend fun saveServerConfig(config: ServerConfig) = dataStore.saveServerConfig(config)
+        override suspend fun saveServerConfig(config: ServerConfig) = dataStore.saveServerConfig(config)
 
-        suspend fun saveServerUrl(url: String) = dataStore.saveServerUrl(url)
+        override suspend fun saveServerUrl(url: String) = dataStore.saveServerUrl(url)
 
-        suspend fun saveApiKey(apiKey: String) = dataStore.saveApiKey(apiKey)
+        override suspend fun saveApiKey(apiKey: String) = dataStore.saveApiKey(apiKey)
 
-        suspend fun setOnboardingComplete(complete: Boolean) = dataStore.setOnboardingComplete(complete)
+        override suspend fun setOnboardingComplete(complete: Boolean) = dataStore.setOnboardingComplete(complete)
 
-        suspend fun setNotificationsEnabled(enabled: Boolean) = dataStore.setNotificationsEnabled(enabled)
+        override suspend fun setNotificationsEnabled(enabled: Boolean) = dataStore.setNotificationsEnabled(enabled)
 
-        suspend fun setLastNotificationCheck(timestamp: Long) = dataStore.setLastNotificationCheck(timestamp)
+        override suspend fun setLastNotificationCheck(timestamp: Long) = dataStore.setLastNotificationCheck(timestamp)
+
+        override suspend fun saveLastChat(
+            chatId: String,
+            chatUrl: String,
+        ) = dataStore.saveLastChat(chatId, chatUrl)
     }

@@ -2,8 +2,12 @@ package com.atomictrxn.conduit.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.atomictrxn.conduit.data.repository.ServerRepository
+import com.atomictrxn.conduit.R
+import com.atomictrxn.conduit.data.repository.ConduitRepository
 import com.atomictrxn.conduit.domain.model.ServerConfig
+import com.atomictrxn.conduit.domain.validation.ServerUrlValidationResult
+import com.atomictrxn.conduit.domain.validation.ServerUrlValidator
+import com.atomictrxn.conduit.ui.common.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,10 +32,12 @@ data class SettingsUiState(
 class SettingsViewModel
     @Inject
     constructor(
-        private val repository: ServerRepository,
+        private val repository: ConduitRepository,
+        private val strings: StringProvider,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+        private var loadedServerUrl: String = ""
 
         val serverConfig: StateFlow<ServerConfig> =
             repository.serverConfig
@@ -52,6 +58,7 @@ class SettingsViewModel
         fun loadCurrentConfig() {
             viewModelScope.launch {
                 repository.serverConfig.first().let { config ->
+                    loadedServerUrl = config.serverUrl
                     _uiState.update {
                         it.copy(
                             serverUrl = config.serverUrl,
@@ -66,11 +73,12 @@ class SettingsViewModel
 
         fun saveSettings(): Boolean {
             val url = _uiState.value.serverUrl.trim()
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                _uiState.update { it.copy(urlError = "URL must start with http:// or https://") }
+            val validation = ServerUrlValidator.validate(url)
+            if (validation != ServerUrlValidationResult.Valid) {
+                _uiState.update { it.copy(urlError = strings.getString(validation.errorStringRes())) }
                 return false
             }
-            val urlChanged = url != serverConfig.value.serverUrl
+            val urlChanged = url != loadedServerUrl
             viewModelScope.launch {
                 repository.saveServerConfig(
                     ServerConfig(
@@ -79,6 +87,7 @@ class SettingsViewModel
                     ),
                 )
                 repository.setNotificationsEnabled(_uiState.value.notificationsEnabled)
+                loadedServerUrl = url
                 _uiState.update { it.copy(isSaved = true, urlChanged = urlChanged) }
             }
             return true
@@ -91,4 +100,12 @@ class SettingsViewModel
         fun clearApiKey() {
             _uiState.update { it.copy(apiKey = "") }
         }
+
+        private fun ServerUrlValidationResult.errorStringRes(): Int =
+            when (this) {
+                ServerUrlValidationResult.Valid -> R.string.url_invalid
+                ServerUrlValidationResult.Required -> R.string.url_required
+                ServerUrlValidationResult.InvalidScheme -> R.string.url_invalid
+                ServerUrlValidationResult.PublicHttp -> R.string.url_public_http_invalid
+            }
     }

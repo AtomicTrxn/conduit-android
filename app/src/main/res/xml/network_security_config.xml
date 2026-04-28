@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Conduit connects to user-supplied Open WebUI servers which are commonly
-  hosted on private LANs over plain HTTP (e.g. http://192.168.1.50:3000).
-  Android's network-security-config does not support IP-range wildcards, so
-  cleartext cannot be restricted to RFC-1918 addresses at the XML config layer.
+  hosted on local networks or tailnets over plain HTTP (e.g.
+  http://192.168.1.50:3000 or http://openwebui.tailnet.ts.net).
+  Android's network-security-config does not support IP-range wildcards or
+  runtime host classification, so cleartext cannot be restricted to local,
+  private, and Tailscale ranges at the XML config layer.
 
-  Cleartext is therefore permitted broadly here. The following compensating
-  controls limit the practical risk:
-    1. shouldOverrideUrlLoading() only opens http:// and https:// URLs
+  Cleartext is therefore permitted broadly here, while app-level URL validation
+  restricts saved http:// server URLs to localhost, private networks, link-local
+  hosts, Tailscale IPs, MagicDNS names, and single-label local names. The
+  following compensating controls limit the practical risk:
+    1. Server URL validation rejects public http:// hosts.
+    2. shouldOverrideUrlLoading() only opens http:// and https:// URLs
        externally — javascript:, file:, data: and other schemes are blocked.
-    2. chatId values from notification deep-links are URI-encoded before use.
-    3. The API key is stored with AES-256 encryption (EncryptedSharedPreferences).
+    3. chatId values from notification deep-links are URI-encoded before use.
+    4. The API key is stored with AES-256 encryption (EncryptedSharedPreferences).
 
   Users are strongly encouraged to put their Open WebUI instance behind a
   TLS reverse proxy (e.g. Caddy, Nginx) for any internet-facing deployment.
   If Android ever adds IP-range support to domain-config this should be
-  tightened to localhost + RFC-1918 ranges only.
+  tightened to match the runtime local/private/tailnet policy.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">

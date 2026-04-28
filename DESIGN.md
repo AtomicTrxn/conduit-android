@@ -199,8 +199,8 @@ A **thin auto-hiding native toolbar** sits above the WebView:
 | Back navigation within WebView | Done | Hardware/gesture back navigates WebView history |
 | Camera support | Done | File chooser + camera capture; temp files cleaned up |
 | Microphone support | Done | Correct `onPermissionRequest` flow |
-| File downloads | **Not implemented** | Via system DownloadManager — planned v1 |
-| Share to Conduit | **Not implemented** | Receive shared text and images — planned v1 |
+| File downloads | Done | Via system DownloadManager into public Downloads |
+| Share to Conduit | Done | Receive shared text/images/files and open configured WebUI |
 
 ### Explicitly Out of Scope (v1)
 

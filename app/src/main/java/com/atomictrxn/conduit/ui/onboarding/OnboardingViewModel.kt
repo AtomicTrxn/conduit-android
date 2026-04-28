@@ -2,8 +2,12 @@ package com.atomictrxn.conduit.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.atomictrxn.conduit.data.repository.ServerRepository
+import com.atomictrxn.conduit.R
+import com.atomictrxn.conduit.data.repository.ConduitRepository
 import com.atomictrxn.conduit.domain.model.ServerConfig
+import com.atomictrxn.conduit.domain.validation.ServerUrlValidationResult
+import com.atomictrxn.conduit.domain.validation.ServerUrlValidator
+import com.atomictrxn.conduit.ui.common.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +27,8 @@ data class OnboardingUiState(
 class OnboardingViewModel
     @Inject
     constructor(
-        private val repository: ServerRepository,
+        private val repository: ConduitRepository,
+        private val strings: StringProvider,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(OnboardingUiState())
         val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -38,12 +43,9 @@ class OnboardingViewModel
 
         fun submitServerUrl(): Boolean {
             val url = _uiState.value.serverUrl.trim()
-            if (url.isBlank()) {
-                _uiState.update { it.copy(urlError = "Please enter a server URL") }
-                return false
-            }
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                _uiState.update { it.copy(urlError = "URL must start with http:// or https://") }
+            val validation = ServerUrlValidator.validate(url)
+            if (validation != ServerUrlValidationResult.Valid) {
+                _uiState.update { it.copy(urlError = strings.getString(validation.errorStringRes())) }
                 return false
             }
             _uiState.update { it.copy(serverUrl = url, urlError = null) }
@@ -67,4 +69,12 @@ class OnboardingViewModel
         fun skipApiKey() {
             completeOnboarding()
         }
+
+        private fun ServerUrlValidationResult.errorStringRes(): Int =
+            when (this) {
+                ServerUrlValidationResult.Valid -> R.string.url_invalid
+                ServerUrlValidationResult.Required -> R.string.url_required
+                ServerUrlValidationResult.InvalidScheme -> R.string.url_invalid
+                ServerUrlValidationResult.PublicHttp -> R.string.url_public_http_invalid
+            }
     }

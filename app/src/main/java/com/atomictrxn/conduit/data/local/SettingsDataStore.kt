@@ -40,6 +40,8 @@ class SettingsDataStore
             val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
             val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
             val LAST_NOTIFICATION_CHECK = longPreferencesKey("last_notification_check")
+            val LAST_CHAT_ID = stringPreferencesKey("last_chat_id")
+            val LAST_CHAT_URL = stringPreferencesKey("last_chat_url")
         }
 
         private val encryptedPrefs: SharedPreferences =
@@ -100,6 +102,11 @@ class SettingsDataStore
                 prefs[Keys.LAST_NOTIFICATION_CHECK] ?: 0L
             }
 
+        val lastChatUrl: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.LAST_CHAT_URL] ?: ""
+            }
+
         suspend fun saveServerConfig(config: ServerConfig) {
             context.dataStore.edit { prefs ->
                 val urlChanged = prefs[Keys.SERVER_URL] != config.serverUrl
@@ -136,5 +143,15 @@ class SettingsDataStore
 
         suspend fun setLastNotificationCheck(timestamp: Long) {
             context.dataStore.edit { it[Keys.LAST_NOTIFICATION_CHECK] = timestamp }
+        }
+
+        suspend fun saveLastChat(
+            chatId: String,
+            chatUrl: String,
+        ) {
+            context.dataStore.edit {
+                it[Keys.LAST_CHAT_ID] = chatId
+                it[Keys.LAST_CHAT_URL] = chatUrl
+            }
         }
     }

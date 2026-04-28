@@ -36,8 +36,8 @@ com.atomictrxn.conduit
 ### Key design decisions
 
 - The `WebView` is created imperatively in `WebViewActivity` and injected into the Compose tree via `AndroidView`. This avoids recomposition destroying and recreating the WebView, which would lose page state.
-- Back-press handling in `WebViewActivity` checks: About open → Settings open → WebView can go back → system back, in that order. Currently only the WebView back-stack step is implemented; overlay dismissal on back is a known gap.
-- Cleartext HTTP is permitted broadly via `network_security_config.xml` because Android's domain-config does not support IP-range wildcards. The file documents the compensating controls and should be tightened if Android ever adds RFC-1918 range support.
+- Back-press handling in `WebViewActivity` checks: About open → Settings open → WebView can go back → system back, in that order.
+- Cleartext HTTP is permitted broadly via `network_security_config.xml` because Android's domain-config does not support IP-range wildcards. Runtime server URL validation restricts saved `http://` URLs to localhost, private networks, link-local hosts, Tailscale IPs, MagicDNS names, and single-label local names.
 - The API key is stored in `EncryptedSharedPreferences` (AES-256-GCM) and auto-synced from the active WebView session via a `JavascriptInterface` (`TokenBridge`) that reads `localStorage.token`. If the server supports persistent API keys (`POST /api/v1/auths/api_key`) the JWT is upgraded; otherwise the JWT itself is stored as the bearer credential. Re-sync is only triggered when the stored token is within 24 hours of expiry.
 - Notifications use `GET /api/v1/chats/` and fire for any chat whose `updated_at` exceeds the last-check timestamp — not exclusively on assistant completion. This may catch renames and manual edits; no finer-grained completion event is available on the polling API.
 

@@ -83,7 +83,10 @@ class OnboardingActivity : ComponentActivity() {
     }
 
     private fun launchWebView() {
-        startActivity(Intent(this, WebViewActivity::class.java))
+        startActivity(
+            Intent(this, WebViewActivity::class.java)
+                .putExtra(WebViewActivity.EXTRA_SHOW_STARTUP_SPLASH, true),
+        )
         finish()
     }
 }

@@ -10,12 +10,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.atomictrxn.conduit.App
 import com.atomictrxn.conduit.R
-import com.atomictrxn.conduit.data.api.ApiClient
-import com.atomictrxn.conduit.data.repository.ServerRepository
 import com.atomictrxn.conduit.ui.webview.WebViewActivity
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import kotlinx.coroutines.flow.first
 
 @HiltWorker
 class NotificationWorker
@@ -23,37 +20,17 @@ class NotificationWorker
     constructor(
         @Assisted private val context: Context,
         @Assisted workerParams: WorkerParameters,
-        private val repository: ServerRepository,
+        private val poller: NotificationPoller,
     ) : CoroutineWorker(context, workerParams) {
         override suspend fun doWork(): Result {
-            val config = repository.serverConfig.first()
-            if (!config.hasApiKey) return Result.success()
-
-            val notificationsEnabled = repository.notificationsEnabled.first()
-            if (!notificationsEnabled) return Result.success()
-
-            return try {
-                val now = System.currentTimeMillis() / 1000L
-                val lastChecked = repository.lastNotificationCheck.first()
-
-                // First run: record current time and skip — don't notify for pre-existing chats.
-                if (lastChecked == 0L) {
-                    repository.setLastNotificationCheck(now)
-                    return Result.success()
+            return when (val result = poller.poll()) {
+                is NotificationPollResult.Success -> {
+                    result.chats.forEach { chat ->
+                        showNotification(chat.id, chat.title)
+                    }
+                    Result.success()
                 }
-
-                val service = ApiClient.create(config.serverUrl, config.apiKey)
-                val chats = service.getChats()
-                val newChats = chats.filter { it.updatedAt > lastChecked }.take(10)
-
-                newChats.forEach { chat ->
-                    showNotification(chat.id, chat.title)
-                }
-
-                repository.setLastNotificationCheck(now)
-                Result.success()
-            } catch (e: Exception) {
-                Result.retry()
+                NotificationPollResult.Retry -> Result.retry()
             }
         }
 
