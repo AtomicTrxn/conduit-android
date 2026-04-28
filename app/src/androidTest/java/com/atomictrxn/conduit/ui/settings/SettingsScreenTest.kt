@@ -17,6 +17,7 @@ import com.atomictrxn.conduit.domain.model.ServerConfig
 import com.atomictrxn.conduit.test.ContextStringProvider
 import com.atomictrxn.conduit.test.FakeConduitRepository
 import com.atomictrxn.conduit.ui.theme.ConduitTheme
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -175,5 +176,66 @@ class SettingsScreenTest {
         composeTestRule
             .onNode(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
             .assertIsEnabled()
+    }
+
+    @Test
+    fun saveWithBlankUrlShowsErrorAndDoesNotCallOnSave() {
+        var saved = false
+        val viewModel =
+            launchSettings(
+                initialConfig = ServerConfig("https://openwebui.example.com", ""),
+                onSave = { saved = true },
+            )
+        viewModel.onServerUrlChanged("")
+        composeTestRule.onNodeWithText(str(com.atomictrxn.conduit.R.string.save)).performClick()
+        composeTestRule.waitForIdle()
+        val errorText = viewModel.uiState.value.urlError
+        composeTestRule.onNodeWithText(errorText!!).assertIsDisplayed()
+        assertFalse(saved)
+    }
+
+    @Test
+    fun saveWithInvalidSchemeShowsErrorAndDoesNotCallOnSave() {
+        var saved = false
+        val viewModel =
+            launchSettings(
+                initialConfig = ServerConfig("https://openwebui.example.com", ""),
+                onSave = { saved = true },
+            )
+        viewModel.onServerUrlChanged("ftp://openwebui.example.com")
+        composeTestRule.onNodeWithText(str(com.atomictrxn.conduit.R.string.save)).performClick()
+        composeTestRule.waitForIdle()
+        val errorText = viewModel.uiState.value.urlError
+        composeTestRule.onNodeWithText(errorText!!).assertIsDisplayed()
+        assertFalse(saved)
+    }
+
+    @Test
+    fun clearApiKeyRemovesStatusLabel() {
+        launchSettings(initialConfig = ServerConfig("https://openwebui.example.com", "sk-key"))
+        composeTestRule
+            .onNodeWithText(str(com.atomictrxn.conduit.R.string.api_key_status_persistent))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(com.atomictrxn.conduit.R.string.clear_api_key)).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule
+            .onNodeWithText(str(com.atomictrxn.conduit.R.string.api_key_status_persistent))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun notificationsHintShownWhenApiKeyAbsent() {
+        launchSettings(initialConfig = ServerConfig("https://openwebui.example.com", ""))
+        composeTestRule
+            .onNodeWithText(str(com.atomictrxn.conduit.R.string.settings_notifications_disabled_hint))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun notificationsHintHiddenWhenApiKeyPresent() {
+        launchSettings(initialConfig = ServerConfig("https://openwebui.example.com", "sk-key"))
+        composeTestRule
+            .onNodeWithText(str(com.atomictrxn.conduit.R.string.settings_notifications_disabled_hint))
+            .assertDoesNotExist()
     }
 }
